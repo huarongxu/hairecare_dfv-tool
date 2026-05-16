@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFV Tool - User Manual</title>
+<style>
+  :root { --blue: #0078d4; --dark: #1a1a2e; --bg: #f8f9fa; --card: #fff; --border: #e0e0e0; --green: #28a745; --red: #dc3545; --orange: #fd7e14; --code-bg: #1e1e1e; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: #333; line-height: 1.7; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, var(--dark) 0%, #16213e 100%); color: #fff; padding: 60px 0 40px; text-align: center; position: relative; z-index: 101; }
+  .header h1 { font-size: 2.4em; font-weight: 300; letter-spacing: 2px; }
+  .header .subtitle { color: #8ec8f8; margin-top: 8px; font-size: 1.1em; }
+  .header .version { display: inline-block; margin-top: 16px; background: rgba(255,255,255,0.12); padding: 4px 16px; border-radius: 20px; font-size: 0.85em; }
+
+  /* Sidebar Nav */
+  .nav { position: fixed; top: 0; left: 0; width: 200px; height: 100vh; background: #fff; border-right: 1px solid var(--border); z-index: 100; overflow-y: auto; padding-top: 0; }
+  .nav-inner { display: flex; flex-direction: column; padding-top: 16px; }
+  .nav a { padding: 10px 20px; text-decoration: none; color: #555; font-size: 0.85em; white-space: nowrap; border-left: 3px solid transparent; transition: all 0.2s; }
+  .nav a:hover { color: var(--blue); background: #f0f6ff; border-left-color: var(--blue); }
+
+  /* Content */
+  .container { max-width: 1060px; padding: 30px 24px 80px; margin-left: 200px; }
+  .footer { margin-left: 200px; }
+  section { margin-bottom: 48px; }
+  h2 { font-size: 1.6em; color: var(--dark); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--blue); }
+  h3 { font-size: 1.15em; color: #2c3e50; margin: 24px 0 12px; }
+  p { margin-bottom: 12px; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 16px; }
+  .card-title { font-weight: 600; font-size: 1.05em; margin-bottom: 8px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+  /* Steps */
+  .step { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+  .step-num { flex-shrink: 0; width: 36px; height: 36px; background: var(--blue); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95em; }
+  .step-content { flex: 1; }
+  .step-content strong { display: block; margin-bottom: 4px; }
+
+  /* Code */
+  pre { background: var(--code-bg); color: #d4d4d4; padding: 16px 20px; border-radius: 6px; overflow-x: auto; font-size: 0.88em; line-height: 1.6; margin: 12px 0; }
+  code { font-family: 'Cascadia Code', 'Consolas', monospace; }
+  .inline-code { background: #e8edf3; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; color: #c7254e; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 0.9em; }
+  th { background: var(--dark); color: #fff; padding: 10px 12px; text-align: left; font-weight: 500; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) { background: #f4f6f9; }
+  tr:hover { background: #e8f0fe; }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 600; }
+  .tag-green { background: #d4edda; color: #155724; }
+  .tag-red { background: #f8d7da; color: #721c24; }
+  .tag-blue { background: #cce5ff; color: #004085; }
+  .tag-orange { background: #fff3cd; color: #856404; }
+
+  /* Alert boxes */
+  .alert { padding: 16px 20px; border-radius: 6px; margin: 16px 0; border-left: 4px solid; }
+  .alert-warning { background: #fff8e1; border-color: var(--orange); }
+  .alert-info { background: #e3f2fd; border-color: var(--blue); }
+  .alert-danger { background: #fce4ec; border-color: var(--red); }
+  .alert-title { font-weight: 600; margin-bottom: 4px; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-start; margin: 20px 0; }
+  .flow-box { background: var(--blue); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.8em; text-align: center; white-space: nowrap; }
+  .flow-arrow { color: var(--blue); font-size: 1.2em; padding: 0 2px; }
+
+  /* File tree */
+  .file-tree { font-family: 'Cascadia Code', monospace; font-size: 0.88em; line-height: 2; background: #f5f7fa; padding: 16px 20px; border-radius: 6px; border: 1px solid var(--border); }
+  .file-tree .folder { color: var(--blue); font-weight: 600; }
+  .file-tree .file { color: #555; }
+  .file-tree .desc { color: #999; font-style: italic; }
+
+  /* KPI demo */
+  .kpi-table { margin: 16px 0; }
+  .kpi-table th { background: #34495e; }
+  .kpi-on { color: var(--green); font-weight: 700; }
+  .kpi-off { color: var(--red); font-weight: 700; }
+
+  /* Footer */
+  .footer { margin-left: 200px; }
+
+  @media (max-width: 900px) {
+    .nav { position: relative; width: 100%; height: auto; padding-top: 0; border-right: none; border-bottom: 1px solid var(--border); }
+    .nav-inner { flex-direction: row; overflow-x: auto; padding-top: 0; }
+    .nav a { border-left: none; border-bottom: 3px solid transparent; padding: 10px 14px; }
+    .header, .container, .footer { margin-left: 0; }
+    .header h1 { font-size: 1.6em; }
+    .card-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ====== HEADER ====== -->
+<div class="header" id="mainHeader">
+  <h1>DFV Automation Tool</h1>
+  <div class="subtitle">Demand Flow Verification &mdash; SAP AO One-Click Automation</div>
+  <div class="version">v1.0 &middot; May 2026 &middot; CSP Team</div>
+</div>
+
+<!-- ====== NAV ====== -->
+<div class="nav">
+  <div class="nav-inner">
+    <a href="#overview">Overview</a>
+    <a href="#prerequisites">Prerequisites</a>
+    <a href="#quickstart">Quick Start</a>
+    <a href="#config">Configuration</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#kpi">KPI Output</a>
+    <a href="#error-matrix">Error Matrix</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#files">File Structure</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+  </div>
+</div>
+
+<!-- ====== CONTENT ====== -->
+<div class="container">
+
+<!-- ====== OVERVIEW ====== -->
+<section id="overview">
+  <h2>1. Overview</h2>
+  <p>DFV Tool 是一个 <strong>一键运行</strong> 的自动化工具，用于执行每周 Demand Flow Verification 流程。它完全替代手动操作 SAP Analysis for Office (AO)，自动完成以下全流程：</p>
+
+  <div class="flow">
+    <div class="flow-box">打开 AO 工作簿</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">等待 AO 加载</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">点击 Refresh All</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">填写 Prompts</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">等待 BW 数据</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">导出 CSV</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">分析&amp;报告</div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">&#9201; 执行时间</div>
+      <p>约 <strong>75&ndash;120 秒</strong>，取决于 SAP 数据量和网络速度。手动操作通常需要 15&ndash;30 分钟。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">&#128202; 输出内容</div>
+      <p>Excel 报告（KPI 汇总 + 按日期/按 Owner 分类的错误明细）+ CSV 原始数据 + HTML Dashboard。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">&#127919; 核心指标</div>
+      <p><strong>18M Volume Difference</strong>（目标 &lt; 2%）和 <strong>13W SKU Difference</strong>（目标 = 0）。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== PREREQUISITES ====== -->
+<section id="prerequisites">
+  <h2>2. Prerequisites（前提条件）</h2>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">&#128187; 系统要求</div>
+      <ul>
+        <li>Windows 10/11（已加入公司域）</li>
+        <li>SAP Analysis for Office（AO）已安装</li>
+        <li>SAP SSO（单点登录）已配置</li>
+        <li>屏幕分辨率 &ge; 1920&times;1080</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">&#128013; Python 环境</div>
+      <ul>
+        <li>Python 3.10+（推荐 3.13）</li>
+        <li>安装路径不含中文/空格</li>
+        <li>管理员权限安装</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>安装 Python 依赖</h3>
+  <pre><code>pip install -r requirements.txt</code></pre>
+  <p>依赖包清单：</p>
+  <table>
+    <tr><th>Package</th><th>用途</th></tr>
+    <tr><td><span class="inline-code">pywinauto</span></td><td>UI 自动化：操作 AO 的 Ribbon 按钮和 Prompts 对话框</td></tr>
+    <tr><td><span class="inline-code">pywin32</span></td><td>COM 接口：连接 Excel、读取单元格数据</td></tr>
+    <tr><td><span class="inline-code">pandas</span></td><td>数据处理：筛选、分类、聚合</td></tr>
+    <tr><td><span class="inline-code">openpyxl</span></td><td>Excel 写入：生成最终报告</td></tr>
+  </table>
+
+  <div class="alert alert-warning">
+    <div class="alert-title">&#9888; 重要提示</div>
+    运行时 <strong>不要移动鼠标或切换窗口</strong>。工具通过物理鼠标点击操作 SAP Prompts 对话框，任何鼠标干预都会导致填写错误。
+  </div>
+</section>
+
+<!-- ====== QUICK START ====== -->
+<section id="quickstart">
+  <h2>3. Quick Start（快速上手）</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <strong>关闭 Excel</strong>
+      <p>确保没有 Excel 窗口打开。工具会自己启动 Excel 并打开 AO 工作簿。</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <strong>打开终端，运行工具</strong>
+      <pre><code>cd c:\0.Local\17.DFV
+python dfv_tool/run.py</code></pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <strong>等待完成</strong>
+      <p>工具会依次执行 7 个步骤，终端会实时显示进度。整个过程约 1&ndash;2 分钟。</p>
+      <pre><code>[22:41:34] Step 1: Opening workbook...
+[22:41:54] Step 2: Waiting for AO Analysis ribbon...
+[22:42:11] Step 3: Clicking Refresh All (triggers Prompts)...
+[22:42:54] Step 4: Filling Prompts dialog...
+[22:43:13] Step 5: Waiting for BW data...
+[22:43:17] Step 6: Exporting to CSV...
+[22:43:18] Step 7: Running pipeline...
+==================================================
+DONE in 108s
+  Data: 10279 rows
+  Errors: 79 (62 actionable)
+  Vol: ON-TRACK (0.88%)  |  SKU: OFF-TRACK (79 errors)
+==================================================</code></pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <strong>查看输出</strong>
+      <p>输出文件在 <span class="inline-code">output/</span> 文件夹：</p>
+      <ul>
+        <li><strong>DFV_actions_YYYYMMDD.xlsx</strong> &mdash; Excel 报告（主要交付物）</li>
+        <li><strong>DFV_Dashboard.html</strong> &mdash; 交互式趋势看板（浏览器打开）</li>
+        <li><strong>DFV_errors_YYYYMMDD.csv</strong> &mdash; 全部错误明细（含 HKTW）</li>
+        <li><strong>DFV_YYYYMMDD_HHMMSS.csv</strong> &mdash; SAP 原始导出数据</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ====== CONFIGURATION ====== -->
+<section id="config">
+  <h2>4. Configuration（配置项）</h2>
+  <p>所有配置集中在 <span class="inline-code">dfv_tool/config.py</span> 文件中。修改后无需重新安装，直接运行即可生效。</p>
+
+  <h3>筛选条件</h3>
+  <table>
+    <tr><th>参数</th><th>当前值</th><th>说明</th></tr>
+    <tr><td><span class="inline-code">REGION</span></td><td>XA</td><td>Region MR（填入 Prompts 的 Region 字段）</td></tr>
+    <tr><td><span class="inline-code">CATEGORY</span></td><td>HAIRCARE</td><td>Category M（填入 Prompts 的 Category 字段）</td></tr>
+    <tr><td><span class="inline-code">DRP_LOCATIONS</span></td><td>25 个 DC</td><td>DRP Location 筛选列表（见下表）</td></tr>
+    <tr><td><span class="inline-code">CALENDAR_WEEK_LOOKAHEAD_MONTHS</span></td><td>18</td><td>Calendar Week 向前看的月数</td></tr>
+  </table>
+
+  <h3>DRP Location 列表</h3>
+  <pre><code>A672, A716, A715, A673, A680, C810, C816, A668,
+D352, C719, C819, D774, C563, C731, C937, D191,
+D767, D901, E295, E496, E467, E474, 5740, E230, D594</code></pre>
+
+  <h3>Calendar Week 计算逻辑</h3>
+  <p>自动计算：<strong>当前 ISO 周</strong> 到 <strong>当前 + 18 个月</strong>。例如：</p>
+  <ul>
+    <li>今天 2026-05-15 &rarr; Week 20/2026</li>
+    <li>+18 个月 = 2027-11 &rarr; Week 44/2027</li>
+    <li>Prompts 填入: <span class="inline-code">20/2026 - 44/2027</span></li>
+  </ul>
+
+  <h3>AO 工作簿路径</h3>
+  <pre><code>WORKBOOK_PATH = "...DRP Forecast Flow Validation AO (20251021) - KHP.xlsm"</code></pre>
+  <p>如果工作簿位置或文件名变了，修改此路径即可。</p>
+
+  <div class="alert alert-info">
+    <div class="alert-title">&#128161; 切换到其他 Category</div>
+    只需修改 <span class="inline-code">config.py</span> 中的 <span class="inline-code">CATEGORY</span>（如 <span class="inline-code">"SKINCARE"</span>），然后重新运行即可。DRP_LOCATIONS 也需要相应调整。
+  </div>
+</section>
+
+<!-- ====== ARCHITECTURE ====== -->
+<section id="architecture">
+  <h2>5. Architecture（技术架构）</h2>
+
+  <h3>7 步执行流程</h3>
+  <table>
+    <tr><th>Step</th><th>函数</th><th>技术手段</th><th>说明</th></tr>
+    <tr><td>1</td><td><span class="inline-code">step1_open_workbook()</span></td><td>os.startfile + COM GetObject</td><td>启动 Excel，打开 AO 工作簿</td></tr>
+    <tr><td>2</td><td><span class="inline-code">step2_wait_ao()</span></td><td>pywinauto UIA backend</td><td>等待 AO 加载完成（Analysis 标签出现）</td></tr>
+    <tr><td>3</td><td><span class="inline-code">step3_refresh()</span></td><td>pywinauto click_input</td><td>点击 Analysis &rarr; Refresh All 按钮</td></tr>
+    <tr><td>4</td><td><span class="inline-code">step4_fill_prompts()</span></td><td>坐标定位 + 剪贴板粘贴</td><td>填写 Region / Category / Calendar Week</td></tr>
+    <tr><td>5</td><td><span class="inline-code">step5_wait_data()</span></td><td>COM Range polling</td><td>轮询等待 BW 数据加载完成</td></tr>
+    <tr><td>6</td><td><span class="inline-code">step6_export()</span></td><td>COM Range().Value 批量读取</td><td>导出数据到 CSV（比逐行读快 10x）</td></tr>
+    <tr><td>7</td><td><span class="inline-code">step7_pipeline()</span></td><td>pandas</td><td>筛选、分类错误、生成报告</td></tr>
+  </table>
+
+  <h3>核心代码文件</h3>
+  <table>
+    <tr><th>文件</th><th>行数</th><th>职责</th></tr>
+    <tr><td><span class="inline-code">run.py</span></td><td>~460</td><td>主入口。包含 7 个 step 函数和 UI 自动化逻辑</td></tr>
+    <tr><td><span class="inline-code">config.py</span></td><td>~120</td><td>配置中心。筛选条件、路径、列映射、错误类型定义</td></tr>
+    <tr><td><span class="inline-code">pipeline.py</span></td><td>~320</td><td>数据管线。加载 CSV &rarr; 筛选 &rarr; 分类 &rarr; KPI &rarr; 导出 Excel &rarr; 存历史 &rarr; 生成 Dashboard</td></tr>
+    <tr><td><span class="inline-code">history.py</span></td><td>~160</td><td>SQLite 历史存储。每次运行的 KPI + 错误明细持久化</td></tr>
+    <tr><td><span class="inline-code">dashboard.py</span></td><td>~300</td><td>Dashboard 生成器。输出单个 HTML 文件，含图表和交互功能</td></tr>
+  </table>
+
+  <h3>关键技术决策</h3>
+
+  <div class="alert alert-danger">
+    <div class="alert-title">&#128680; 为什么不用 SAP XLL 函数？</div>
+    <p>从 Python COM 调用 <span class="inline-code">xl.Run("SAPExecuteCommand")</span> 等 XLL 函数会<strong>永久破坏 AO 的 Analysis Ribbon</strong>（标签消失，需重启 Excel）。所有 SAP 交互必须通过 pywinauto 的物理按钮点击。</p>
+  </div>
+
+  <div class="alert alert-info">
+    <div class="alert-title">&#128161; Prompts 对话框的坐标定位</div>
+    <p>SAP AO 的 Prompts 对话框基于 WPF 技术，右侧输入面板 (DP_4) 不暴露标准 UIA 控件。工具通过<strong>固定坐标公式</strong>定位输入框：</p>
+    <pre><code>input_y = right_panel.top + 62 + variable_index * 40</code></pre>
+    <p>其中 <span class="inline-code">variable_index</span> 从左侧面板标签的 Y 位置自动排序得出。</p>
+  </div>
+</section>
+
+<!-- ====== KPI OUTPUT ====== -->
+<section id="kpi">
+  <h2>6. KPI Output（输出报告）</h2>
+
+  <h3>Excel 报告结构</h3>
+  <p>输出文件 <span class="inline-code">DFV_actions_YYYYMMDD.xlsx</span> 包含以下 sheets：</p>
+  <table>
+    <tr><th>Sheet 名</th><th>内容</th></tr>
+    <tr><td><span class="inline-code">Summary</span></td><td>KPI 汇总表（2 行：Volume + SKU）</td></tr>
+    <tr><td><span class="inline-code">YYYYMMDD</span></td><td>当天日期命名的错误明细（仅 actionable）</td></tr>
+    <tr><td><span class="inline-code">DP Planner</span></td><td>DP Planner 负责的错误</td></tr>
+    <tr><td><span class="inline-code">DRP Planner</span></td><td>DRP Planner 负责的错误</td></tr>
+    <tr><td><span class="inline-code">DRP Planner _ IOL</span></td><td>DRP Planner / IOL 联合负责的错误</td></tr>
+  </table>
+
+  <h3>KPI 汇总表示例</h3>
+  <table class="kpi-table">
+    <tr><th>Criteria</th><th>Status</th><th>TOTAL Demand HUB</th><th>TOTAL APO-DRP</th><th>% DIFF</th><th>Target</th></tr>
+    <tr>
+      <td>18 Months volume difference</td>
+      <td><span class="kpi-on">on-track</span></td>
+      <td>52,495,189</td>
+      <td>52,030,828</td>
+      <td>0.88%</td>
+      <td>2%</td>
+    </tr>
+    <tr>
+      <td>13 weeks sku difference</td>
+      <td><span class="kpi-off">off-track</span></td>
+      <td></td>
+      <td></td>
+      <td>79</td>
+      <td>0 SKU</td>
+    </tr>
+  </table>
+
+  <h3>日期明细 Sheet 列</h3>
+  <table>
+    <tr><th>列名</th><th>说明</th></tr>
+    <tr><td>File ID</td><td>SAP 文件标识（XADRPDSO / XARTFAPO / XAGDFAPO）</td></tr>
+    <tr><td>APO - Product</td><td>物料编号</td></tr>
+    <tr><td>Category</td><td>品类（HAIRCARE）</td></tr>
+    <tr><td>Brand</td><td>品牌</td></tr>
+    <tr><td>APO - Location</td><td>DC 代码</td></tr>
+    <tr><td>SNP Planner</td><td>SNP 计划员</td></tr>
+    <tr><td>Error Message</td><td>错误类型</td></tr>
+    <tr><td>Forecast</td><td>IDP 预测值（BW Demand Hub）</td></tr>
+    <tr><td>DP Fcst (Simulated)</td><td>APO-DRP 预测值</td></tr>
+    <tr><td>Reason</td><td>根因分析（见 Error Matrix）</td></tr>
+    <tr><td>Action</td><td>建议动作</td></tr>
+    <tr><td>Owner</td><td>责任人</td></tr>
+  </table>
+</section>
+
+<!-- ====== ERROR MATRIX ====== -->
+<section id="error-matrix">
+  <h2>7. Error Classification Matrix（错误判断矩阵）</h2>
+  <p>根据 SAP AO 报告的 Error Message，工具自动分类 Reason、Action 和 Owner：</p>
+
+  <table>
+    <tr><th>Error Message</th><th>条件</th><th>Reason</th><th>Action</th><th>Owner</th></tr>
+    <tr>
+      <td rowspan="3"><strong>Missing Mat/Loc</strong></td>
+      <td>所有 location 都有此错误</td>
+      <td>No code activation requested</td>
+      <td>CSP to investigate with IOL/SIP planner</td>
+      <td><span class="tag tag-blue">DRP / IOL</span></td>
+    </tr>
+    <tr>
+      <td>仅部分 location</td>
+      <td>Missing master data in APO-DRP</td>
+      <td>Check code activation / Apply T-lane</td>
+      <td><span class="tag tag-blue">DRP / IOL</span></td>
+    </tr>
+    <tr>
+      <td>Location = 5740 (HKTW)</td>
+      <td>HKTW location</td>
+      <td>HKTW - No action needed</td>
+      <td><span class="tag tag-green">No action</span></td>
+    </tr>
+    <tr>
+      <td><strong>Matloc Deleted</strong></td>
+      <td>&mdash;</td>
+      <td>Material/location deleted but still has forecast</td>
+      <td>Contact DP to remove forecast</td>
+      <td><span class="tag tag-orange">DP Planner</span></td>
+    </tr>
+    <tr>
+      <td rowspan="2"><strong>No SNP Assigned</strong></td>
+      <td>Non-HKTW</td>
+      <td>DRP master data incomplete</td>
+      <td>DRP to complete master data</td>
+      <td><span class="tag tag-blue">DRP Planner</span></td>
+    </tr>
+    <tr>
+      <td>Location = 5740 (HKTW)</td>
+      <td>HKTW location</td>
+      <td>HKTW - No action needed</td>
+      <td><span class="tag tag-green">No action</span></td>
+    </tr>
+    <tr>
+      <td><strong>SNP equals *99</strong></td>
+      <td>&mdash;</td>
+      <td>Code turned off in APO, still has forecast</td>
+      <td>DRP to reactivate or DP to remove forecast</td>
+      <td><span class="tag tag-blue">DRP Planner</span></td>
+    </tr>
+    <tr>
+      <td><strong>Under Deletion</strong></td>
+      <td>&mdash;</td>
+      <td>Material under deletion process</td>
+      <td>Contact DP to remove forecast</td>
+      <td><span class="tag tag-orange">DP Planner</span></td>
+    </tr>
+  </table>
+
+  <div class="alert alert-info">
+    <div class="alert-title">&#128161; HKTW (5740) 说明</div>
+    <p>Location 5740 = 香港/台湾分销中心。此区域的错误通常不需要处理，在报告中标记为 "No action needed"，不计入 actionable errors。</p>
+  </div>
+</section>
+
+<!-- ====== DASHBOARD ====== -->
+<section id="dashboard">
+  <h2>8. Dashboard（趋势看板）</h2>
+
+  <p>每次运行结束后，工具会自动生成 <span class="inline-code">output/DFV_Dashboard.html</span>。双击用浏览器打开即可查看。</p>
+
+  <h3>Dashboard 功能</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">&#128202; KPI 状态卡片</div>
+      <p>Volume Diff%、Error SKUs、Demand Hub 总量、APO-DRP 总量。颜色标识 on-track / off-track。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">&#128270; Action Items 表格</div>
+      <p>按 Owner 过滤的错误明细表，可在 DP Planner / DRP Planner / IOL 之间快速切换。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">&#128200; 趋势图表</div>
+      <p>Volume Diff% 折线图（含 2% 目标线）+ Error SKU 柱状图。需要 Chart.js CDN（联网）。</p>
+    </div>
+    <div class="card">
+      <div class="card-title">&#128197; 历史周选择器</div>
+      <p>下拉菜单切换历史周次数据，查看任意一周的 KPI 和错误详情。</p>
+    </div>
+  </div>
+
+  <h3>数据存储</h3>
+  <p>历史数据存储在 <span class="inline-code">dfv_history.db</span>（SQLite），每次运行自动追加。</p>
+  <table>
+    <tr><th>Table</th><th>内容</th></tr>
+    <tr><td><span class="inline-code">runs</span></td><td>每次运行的 KPI 汇总（日期、周次、diff%、错误数、状态）</td></tr>
+    <tr><td><span class="inline-code">errors</span></td><td>每次运行的全部错误明细（产品、位置、原因、动作、Owner）</td></tr>
+  </table>
+
+  <h3>技术实现</h3>
+  <ul>
+    <li>单 HTML 文件，数据以 JSON 内嵌到 <span class="inline-code">&lt;script&gt;</span> 中</li>
+    <li>使用 <span class="inline-code">str.replace()</span> 注入数据（避免 f-string 与 JS 大括号的冲突）</li>
+    <li>JS 用 ES5 语法确保兼容性（var、function 代替 const/let/arrow）</li>
+    <li>Chart.js 4.4.0 通过 CDN 加载（无网络时显示提示）</li>
+  </ul>
+
+  <div class="alert alert-info">
+    <div class="alert-title">&#128161; 单独重新生成 Dashboard</div>
+    <pre><code>cd dfv_tool
+python -c "from dashboard import generate_dashboard; generate_dashboard()"</code></pre>
+  </div>
+</section>
+
+<!-- ====== FILE STRUCTURE ====== -->
+<section id="files">
+  <h2>9. File Structure（文件结构）</h2>
+
+  <div class="file-tree">
+    <span class="folder">17.DFV/</span><br>
+    &nbsp;&nbsp;&#128196; DRP Forecast Flow Validation AO...KHP.xlsm <span class="desc">&mdash; SAP AO 工作簿（主文件）</span><br>
+    &nbsp;&nbsp;&#128196; Demand Flow Verification_CSNP Basic Training.pptx <span class="desc">&mdash; DFV 培训文档</span><br>
+    &nbsp;&nbsp;&#128196; G-CSP-AO-Demand Flow Verification...R3.xlsm <span class="desc">&mdash; R3 版 DFV 参考</span><br>
+    &nbsp;&nbsp;&#128196; dfv_history.db <span class="desc">&mdash; SQLite 历史数据库（自动生成）</span><br>
+    &nbsp;&nbsp;&#128196; requirements.txt <span class="desc">&mdash; Python 依赖清单</span><br>
+    &nbsp;&nbsp;&#128196; DFV_Manual.html <span class="desc">&mdash; 本手册</span><br>
+    &nbsp;&nbsp;<span class="folder">dfv_tool/</span> <span class="desc">&mdash; 核心代码</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; run.py <span class="desc">&mdash; 主入口（7 步自动化）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; config.py <span class="desc">&mdash; 配置文件（筛选条件、路径）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; pipeline.py <span class="desc">&mdash; 数据管线（分类、KPI、导出 + 历史存储）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; history.py <span class="desc">&mdash; SQLite 历史读写</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; dashboard.py <span class="desc">&mdash; Dashboard HTML 生成器</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; __init__.py <span class="desc">&mdash; Python 包标识</span><br>
+    &nbsp;&nbsp;<span class="folder">output/</span> <span class="desc">&mdash; 输出目录（自动生成）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; DFV_YYYYMMDD_HHMMSS.csv <span class="desc">&mdash; SAP 原始导出数据</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; DFV_actions_YYYYMMDD.xlsx <span class="desc">&mdash; 最终报告（KPI + 错误明细）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; DFV_errors_YYYYMMDD.csv <span class="desc">&mdash; 全部错误（含 HKTW）</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&#128196; DFV_Dashboard.html <span class="desc">&mdash; 交互式趋势看板</span><br>
+  </div>
+</section>
+
+<!-- ====== TROUBLESHOOTING ====== -->
+<section id="troubleshooting">
+  <h2>10. Troubleshooting（常见问题）</h2>
+
+  <div class="card">
+    <div class="card-title">&#10060; "Analysis ribbon did not appear within 180s"</div>
+    <p><strong>原因：</strong>SAP AO 插件没有加载，或 SSO 登录过期。</p>
+    <p><strong>解决：</strong>手动打开 Excel &rarr; 检查 Analysis 标签是否存在 &rarr; 确认 SAP SSO 可以正常登录 &rarr; 关闭 Excel 后重新运行。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">&#10060; "Prompts dialog did not appear within 120s"</div>
+    <p><strong>原因：</strong>上次的 SAP session 还有效，Refresh 直接加载数据而不弹出 Prompts。</p>
+    <p><strong>解决：</strong>关闭 Excel &rarr; 重新运行。如果仍不弹出，手动在 AO 中点 Analysis &rarr; Prompts 验证。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">&#10060; "Variables not accepted (OK still disabled)"</div>
+    <p><strong>原因：</strong>Prompts 对话框的坐标偏移（屏幕分辨率/缩放设置变化）。</p>
+    <p><strong>解决：</strong>确保显示器设置为 100% 缩放（Settings &rarr; Display &rarr; Scale = 100%）。如果使用外接显示器，确保 AO 窗口在主显示器上。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">&#10060; 运行时鼠标被移动了</div>
+    <p><strong>原因：</strong>Step 4 使用物理鼠标点击填写 Prompts，移动鼠标会导致点击位置偏移。</p>
+    <p><strong>解决：</strong>运行期间（尤其是前 60 秒）不要碰鼠标和键盘。可以锁屏但不要切换用户。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">&#10060; COM 连接失败 / "Cannot re-acquire Excel COM object"</div>
+    <p><strong>原因：</strong>Excel COM 进程挂起或有多个 Excel 实例。</p>
+    <p><strong>解决：</strong>打开任务管理器 &rarr; 结束所有 EXCEL.EXE 进程 &rarr; 重新运行。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">&#9888; 想手动单独运行 Pipeline（不刷新 SAP）</div>
+    <p>可以直接对已有的 CSV 文件运行分析：</p>
+    <pre><code>python dfv_tool/pipeline.py --csv output/DFV_20260515_224318.csv</code></pre>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<div class="footer" style="text-align:center; padding:30px; color:#999; font-size:0.85em; border-top:1px solid #e0e0e0;">
+  DFV Automation Tool &middot; CSP Team &middot; Last updated: May 2026
+</div>
+
+<script>
+// Position sidebar below the header
+function positionNav() {
+  var header = document.getElementById('mainHeader');
+  var nav = document.querySelector('.nav');
+  if (window.innerWidth > 900) {
+    var h = header.offsetHeight;
+    nav.style.top = h + 'px';
+    nav.style.height = 'calc(100vh - ' + h + 'px)';
+  } else {
+    nav.style.top = '';
+    nav.style.height = '';
+  }
+}
+window.addEventListener('load', positionNav);
+window.addEventListener('resize', positionNav);
+
+// Highlight active nav link on scroll
+var sections = document.querySelectorAll('section[id]');
+var navLinks = document.querySelectorAll('.nav a');
+window.addEventListener('scroll', function() {
+  var scrollY = window.scrollY + 120;
+  sections.forEach(function(sec) {
+    if (sec.offsetTop <= scrollY && sec.offsetTop + sec.offsetHeight > scrollY) {
+      navLinks.forEach(function(a) {
+        a.style.color = '';
+        a.style.borderLeftColor = 'transparent';
+        a.style.fontWeight = '';
+        if (a.getAttribute('href') === '#' + sec.id) {
+          a.style.color = '#0078d4';
+          a.style.borderLeftColor = '#0078d4';
+          a.style.fontWeight = '600';
+        }
+      });
+    }
+  });
+});
+</script>
+
+</body>
+</html>
