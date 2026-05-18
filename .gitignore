@@ -13,6 +13,10 @@ dfv_history.db
 # Excel temp files
 ~$*.xls*
 
+# SAP workbooks and reference files (large binaries)
+*.xlsm
+*.pptx
+
 # IDE
 .vscode/
 .idea/

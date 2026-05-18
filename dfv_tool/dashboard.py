@@ -7,7 +7,10 @@ DFV Dashboard Generator - Creates a single HTML file with:
 """
 import json
 import os
+import sys
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from history import get_all_data
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")

@@ -27,7 +27,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import WORKBOOK_PATH, OUTPUT_DIR, REGION, CATEGORY, get_calendar_week_range
+from config import WORKBOOK_PATH, OUTPUT_DIR, REGION, CATEGORY
 
 # Variant name saved in SAP AO Prompts dialog (create manually once)
 # To create: open Prompts -> fill Region=XA + Category=HAIRCARE -> Save Variant -> name it
@@ -209,7 +209,7 @@ def step3_refresh(xl, main_win):
 # Fill mandatory variables with * in the left panel:
 #   - * Region - MR  (mandatory, fill with REGION)
 # Always fill Category to reduce data transfer from SAP.
-# Always update Calendar Week dynamically.
+# Calendar Week is retained by SAP automatically — no need to fill.
 # ============================================================
 def step4_fill_prompts(hwnd):
     log("Step 4: Filling Prompts dialog...")
@@ -276,19 +276,8 @@ def step4_fill_prompts(hwnd):
         fill_variable(dlg, CATEGORY, input_x, category_y)
         time.sleep(1)
 
-    # Calendar Week: only fill if it needs updating
-    calweek_idx = get_idx('Calendar Week')
-    if calweek_idx is not None:
-        start_week, end_week = get_calendar_week_range()
-        cal_week_value = f"{start_week} - {end_week}"
-        calweek_name = var_entries[calweek_idx][0]
-        if cal_week_value not in calweek_name:
-            calweek_y = get_y(calweek_idx)
-            log(f"  Filling Calendar Week = {cal_week_value} at ({input_x},{calweek_y}) [idx={calweek_idx}]")
-            fill_variable(dlg, cal_week_value, input_x, calweek_y)
-            time.sleep(1)
-        else:
-            log(f"  Calendar Week already set: {calweek_name}")
+    # Calendar Week: skip — SAP retains the previous value automatically.
+    # Only Region and Category need to be filled each run.
 
     # Final OK
     ok, ok_btn = get_ok_button(hwnd)
@@ -415,14 +404,9 @@ def step6_export(xl, last_row):
 # ============================================================
 def step7_pipeline(csv_path):
     log("Step 7: Running pipeline...")
-    from pipeline import (load_data, classify_issues, generate_summary,
-                          generate_owner_report, export_results)
+    from pipeline import run_pipeline
 
-    df = load_data(csv_path)
-    errors = classify_issues(df)
-    summary = generate_summary(df, errors)
-    generate_owner_report(errors)
-    export_results(errors, summary, OUTPUT_DIR)
+    df, errors, summary, reports = run_pipeline(csv_path)
     return df, errors, summary
 
 
