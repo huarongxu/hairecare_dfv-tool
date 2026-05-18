@@ -107,10 +107,19 @@ ERROR_TYPES = {
 # ============================================================
 # Owner Mapping
 # ============================================================
+# Default owner by error type (used during pipeline run)
 OWNER_MAPPING = {
     "Missing Mat/Loc": "DRP Planner / IOL",
     "Matloc Deleted": "DP Planner",
     "No SNP Assigned": "DRP Planner",
     "SNP equals *99": "DRP Planner",
     "Under Deletion": "DP Planner",
+}
+
+# Fixed owners - override by error type with specific names
+# These are applied AFTER OWNER_MAPPING during save_run
+# Set to actual person names for known assignments
+FIXED_OWNERS = {
+    # "Missing Mat/Loc": "John / IOL Team",
+    # "Matloc Deleted": "Jane",
 }

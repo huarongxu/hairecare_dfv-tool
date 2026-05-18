@@ -60,6 +60,11 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
            align-items:center; justify-content:space-between; }
 .topbar h1 { font-size:1.3em; font-weight:400; letter-spacing:1px; }
 .topbar .week-sel { display:flex; align-items:center; gap:10px; }
+.topbar .sync-btn { padding:7px 16px; border-radius:5px; border:1px solid #555;
+                    background:#2a2a4a; color:#ddd; font-size:0.82em; cursor:pointer;
+                    transition:all 0.15s; }
+.topbar .sync-btn:hover { background:var(--blue); color:#fff; border-color:var(--blue); }
+.topbar .sync-btn.done { background:var(--green); color:#fff; border-color:var(--green); }
 .topbar select { padding:6px 12px; border-radius:4px; border:1px solid #555;
                   background:#2a2a4a; color:#fff; font-size:0.9em; cursor:pointer; }
 .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:24px 32px 8px; }
@@ -94,6 +99,10 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
 .chart-card { background:#fff; border-radius:8px; padding:20px; }
 .chart-card h3 { font-size:0.95em; color:#555; margin-bottom:12px; }
 .no-actions { text-align:center; padding:40px; color:#999; font-size:1.1em; }
+.copy-btn { padding:8px 18px; background:var(--blue); color:#fff; border:none; border-radius:6px;
+            cursor:pointer; font-size:0.85em; margin-left:auto; transition:all 0.15s; }
+.copy-btn:hover { background:#005a9e; }
+.copy-btn.copied { background:var(--green); }
 @media(max-width:900px) {
   .kpi-row { grid-template-columns:repeat(2,1fr); }
   .chart-row { grid-template-columns:1fr; }
@@ -109,6 +118,7 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
 <div class="topbar">
   <h1>DFV Dashboard</h1>
   <div class="week-sel">
+    <button class="sync-btn" onclick="syncOwners()" title="Copy sync command to clipboard">Sync Owners</button>
     <span style="font-size:0.85em;color:#aaa;">Select Week:</span>
     <select id="weekPicker" onchange="switchWeek(this.value)"></select>
   </div>
@@ -119,6 +129,7 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
 <div class="main">
   <div class="section-title">
     Action Items <span class="badge" id="actionCount">0</span>
+    <button class="copy-btn" onclick="copyTable()">Copy Table</button>
   </div>
   <div class="filters" id="ownerFilters"></div>
   <div id="actionTableWrap"></div>
@@ -214,8 +225,8 @@ function renderActions(errors) {
     return;
   }
 
-  var html = '<table class="action-table"><thead><tr>' +
-    '<th>Product</th><th>Brand</th><th>Location</th><th>Error</th>' +
+  var html = '<table class="action-table" id="actionTable"><thead><tr>' +
+    '<th>Product</th><th>Description</th><th>Brand</th><th>Location</th><th>Error</th>' +
     '<th>Forecast</th><th>Reason</th><th>Action</th><th>Owner</th>' +
     '</tr></thead><tbody>';
 
@@ -226,6 +237,7 @@ function renderActions(errors) {
     var fcst = Math.round(e.idp_forecast).toLocaleString();
     html += '<tr>' +
       '<td><strong>' + e.apo_product + '</strong></td>' +
+      '<td>' + (e.description || "") + '</td>' +
       '<td>' + (e.brand || "") + '</td>' +
       '<td>' + e.apo_location + '</td>' +
       '<td>' + e.error_message + '</td>' +
@@ -237,6 +249,38 @@ function renderActions(errors) {
   }
   html += '</tbody></table>';
   document.getElementById("actionTableWrap").innerHTML = html;
+}
+
+function copyTable() {
+  var table = document.getElementById("actionTable");
+  if (!table) return;
+  var rows = table.querySelectorAll("tr");
+  var tsv = [];
+  for (var i = 0; i < rows.length; i++) {
+    var cells = rows[i].querySelectorAll("th, td");
+    var row = [];
+    for (var j = 0; j < cells.length; j++) {
+      row.push(cells[j].innerText.replace(/\t/g, " "));
+    }
+    tsv.push(row.join("\t"));
+  }
+  var text = tsv.join("\n");
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.querySelector(".copy-btn");
+    btn.textContent = "Copied!";
+    btn.classList.add("copied");
+    setTimeout(function() { btn.textContent = "Copy Table"; btn.classList.remove("copied"); }, 2000);
+  });
+}
+
+function syncOwners() {
+  var cmd = "cd c:\\0.Local\\17.DFV && python dfv_tool/sync_owners.py";
+  navigator.clipboard.writeText(cmd).then(function() {
+    var btn = document.querySelector(".sync-btn");
+    btn.textContent = "Command Copied!";
+    btn.classList.add("done");
+    setTimeout(function() { btn.textContent = "Sync Owners"; btn.classList.remove("done"); }, 3000);
+  });
 }
 
 function setFilter(f) {

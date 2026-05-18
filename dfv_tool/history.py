@@ -4,6 +4,7 @@ Stores KPI summary + all error details for each run.
 """
 import sqlite3
 import os
+import pandas as pd
 from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dfv_history.db")
@@ -154,3 +155,103 @@ def get_all_data():
         run["errors"] = [dict(r) for r in rows]
     conn.close()
     return runs
+
+
+def update_owners(mapping, run_id=None):
+    """
+    Batch update owners in the DB.
+
+    Args:
+        mapping: dict of {error_message: new_owner_name}
+                 e.g. {"Missing Mat/Loc": "张三 / IOL", "Matloc Deleted": "李四"}
+        run_id:  If None, update ALL runs. If specified, only that run.
+
+    Example usage:
+        from history import update_owners
+        update_owners({"Missing Mat/Loc": "张三 / IOL", "No SNP Assigned": "王五"})
+    """
+    conn = _get_conn()
+    for error_msg, new_owner in mapping.items():
+        if run_id:
+            conn.execute(
+                "UPDATE errors SET owner = ? WHERE error_message = ? AND run_id = ?",
+                (new_owner, error_msg, run_id)
+            )
+        else:
+            conn.execute(
+                "UPDATE errors SET owner = ? WHERE error_message = ?",
+                (new_owner, error_msg)
+            )
+    conn.commit()
+    affected = conn.execute("SELECT changes()").fetchone()[0]
+    conn.close()
+    print(f"Updated {affected} rows")
+    return affected
+
+
+def sync_owners_from_excel(excel_path, run_id=None):
+    """
+    Read Owner column from edited Excel, sync back to DB.
+    Matches by APO_Product + APO_Location + Error_Message.
+
+    Args:
+        excel_path: Path to edited DFV_actions_YYYYMMDD.xlsx
+        run_id: If None, update the latest run. If specified, that run.
+
+    Usage:
+        from history import sync_owners_from_excel
+        sync_owners_from_excel("output/DFV_actions_20260518.xlsx")
+    """
+    # Read the date-named sheet (second sheet, skip Summary)
+    xl = pd.ExcelFile(excel_path)
+    # Find the detail sheet (named like 20260518)
+    detail_sheet = None
+    for name in xl.sheet_names:
+        if name.isdigit() and len(name) == 8:
+            detail_sheet = name
+            break
+    if detail_sheet is None:
+        detail_sheet = xl.sheet_names[1] if len(xl.sheet_names) > 1 else xl.sheet_names[0]
+
+    df = pd.read_excel(excel_path, sheet_name=detail_sheet)
+
+    # Map Excel column names to DB columns
+    col_map = {
+        "APO - Product": "apo_product",
+        "APO - Location": "apo_location",
+        "Error Message": "error_message",
+        "Owner": "owner",
+    }
+    # Check required columns exist
+    missing = [c for c in col_map if c not in df.columns]
+    if missing:
+        raise ValueError(f"Excel missing columns: {missing}")
+
+    # Determine run_id
+    if run_id is None:
+        conn = _get_conn()
+        row = conn.execute("SELECT id FROM runs ORDER BY run_date DESC LIMIT 1").fetchone()
+        if not row:
+            raise ValueError("No runs in DB")
+        run_id = row["id"]
+        conn.close()
+
+    # Update each row
+    conn = _get_conn()
+    updated = 0
+    for _, row in df.iterrows():
+        product = str(row["APO - Product"])
+        location = str(row["APO - Location"])
+        error_msg = str(row["Error Message"])
+        owner = str(row["Owner"])
+
+        cur = conn.execute("""
+            UPDATE errors SET owner = ?
+            WHERE run_id = ? AND apo_product = ? AND apo_location = ? AND error_message = ?
+        """, (owner, run_id, product, location, error_msg))
+        updated += cur.rowcount
+
+    conn.commit()
+    conn.close()
+    print(f"Synced {updated} owners from Excel (run_id={run_id})")
+    return updated
