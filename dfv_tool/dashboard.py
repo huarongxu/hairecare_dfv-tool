@@ -95,10 +95,10 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
 .tag-dp { background:#fff3cd; color:#856404; }
 .tag-drp { background:#cce5ff; color:#004085; }
 .tag-iol { background:#d4edda; color:#155724; }
-.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px; }
-.chart-card { background:#fff; border-radius:8px; padding:12px 16px; max-height:220px; }
-.chart-card h3 { font-size:0.85em; color:#555; margin-bottom:6px; }
-.chart-card canvas { max-height:170px; }
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:24px; }
+.chart-card { background:#fff; border-radius:8px; padding:16px 18px; max-height:280px; }
+.chart-card h3 { font-size:0.9em; color:#555; margin-bottom:8px; }
+.chart-card canvas { max-height:220px; }
 .no-actions { text-align:center; padding:40px; color:#999; font-size:1.1em; }
 .copy-btn { padding:8px 18px; background:var(--blue); color:#fff; border:none; border-radius:6px;
             cursor:pointer; font-size:0.85em; margin-left:auto; transition:all 0.15s; }
