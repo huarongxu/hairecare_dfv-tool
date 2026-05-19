@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
     OUTPUT_DIR, ERROR_TYPES, OWNER_MAPPING, DRP_LOCATIONS, CATEGORY,
     FIXED_OWNERS, LOCATION_OWNERS, HKTW_LOCATIONS,
+    IOL_BRAND_OWNERS, IOL_PLUS_OWNER,
 )
 
 
@@ -99,6 +100,23 @@ def classify_issues(df):
     for loc, owner_name in LOCATION_OWNERS.items():
         mask = errors["APO_Location"] == loc
         errors.loc[mask, "Owner"] = owner_name
+
+    # IOL owner assignment (Missing Mat/Loc only, not overridden by location)
+    iol_mask = (
+        (errors["Error_Message"] == "Missing Mat/Loc") &
+        (~errors["APO_Location"].isin(LOCATION_OWNERS.keys())) &
+        (~errors["APO_Location"].isin(HKTW_LOCATIONS))
+    )
+    # Priority 1: Description contains "+" → Lucy
+    desc = errors["Description"].fillna("").astype(str)
+    plus_mask = iol_mask & desc.str.contains(r"\+", regex=True)
+    errors.loc[plus_mask, "Owner"] = IOL_PLUS_OWNER
+    # Priority 2: By Brand
+    remaining_iol = iol_mask & ~plus_mask
+    brand_col = errors["Brand"].fillna("").astype(str).str.strip()
+    for brand_key, owner_name in IOL_BRAND_OWNERS.items():
+        brand_match = remaining_iol & (brand_col == brand_key)
+        errors.loc[brand_match, "Owner"] = owner_name
 
     # Generate unique key
     errors["Key"] = errors["APO_Product"].astype(str) + errors["APO_Location"].astype(str)

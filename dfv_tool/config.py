@@ -131,6 +131,16 @@ LOCATION_OWNERS = {
     "D767": "Wu Wen hao",
 }
 
+# IOL Owner assignment (for "Missing Mat/Loc" items only)
+# Priority: Description contains "+" → Lucy, then by Brand
+IOL_BRAND_OWNERS = {
+    "HAIRRECIPE": "Guimin",
+    "REJOICE": "Rebecca",
+    "PANTENE": "Xueying",
+    "HD&SHLDRS": "Becky",
+}
+IOL_PLUS_OWNER = "Lucy"  # Description contains "+"
+
 # Additional HKTW locations (not in scope, owner = blank)
 # 5740 is always HKTW; add more here
 HKTW_LOCATIONS = {"5740", "E230"}
