@@ -84,11 +84,11 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
                    background:#fff; cursor:pointer; font-size:0.82em; transition:all 0.15s; }
 .filters button:hover { border-color:var(--blue); color:var(--blue); }
 .filters button.active { background:var(--blue); color:#fff; border-color:var(--blue); }
-.action-table { width:100%; border-collapse:collapse; font-size:0.85em; background:#fff;
+.action-table { width:100%; border-collapse:collapse; font-size:0.72em; background:#fff;
                  border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
-.action-table thead th { background:var(--dark); color:#fff; padding:10px 10px;
+.action-table thead th { background:var(--dark); color:#fff; padding:5px 6px;
                           text-align:left; font-weight:500; position:sticky; top:0; }
-.action-table tbody td { padding:9px 10px; border-bottom:1px solid #f0f0f0; }
+.action-table tbody td { padding:4px 6px; border-bottom:1px solid #f0f0f0; line-height:1.3; }
 .action-table tbody tr:hover { background:#f0f6ff; }
 .action-table .owner-cell { white-space:nowrap; }
 .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.78em; font-weight:600; }
