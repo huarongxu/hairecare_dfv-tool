@@ -84,20 +84,21 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
                    background:#fff; cursor:pointer; font-size:0.82em; transition:all 0.15s; }
 .filters button:hover { border-color:var(--blue); color:var(--blue); }
 .filters button.active { background:var(--blue); color:#fff; border-color:var(--blue); }
-.action-table { width:100%; border-collapse:collapse; font-size:0.72em; background:#fff;
+.action-table { width:100%; border-collapse:collapse; font-size:0.85em; background:#fff;
                  border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
-.action-table thead th { background:var(--dark); color:#fff; padding:5px 6px;
+.action-table thead th { background:var(--dark); color:#fff; padding:10px 10px;
                           text-align:left; font-weight:500; position:sticky; top:0; }
-.action-table tbody td { padding:4px 6px; border-bottom:1px solid #f0f0f0; line-height:1.3; }
+.action-table tbody td { padding:9px 10px; border-bottom:1px solid #f0f0f0; }
 .action-table tbody tr:hover { background:#f0f6ff; }
 .action-table .owner-cell { white-space:nowrap; }
 .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.78em; font-weight:600; }
 .tag-dp { background:#fff3cd; color:#856404; }
 .tag-drp { background:#cce5ff; color:#004085; }
 .tag-iol { background:#d4edda; color:#155724; }
-.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:28px; }
-.chart-card { background:#fff; border-radius:8px; padding:20px; }
-.chart-card h3 { font-size:0.95em; color:#555; margin-bottom:12px; }
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px; }
+.chart-card { background:#fff; border-radius:8px; padding:12px 16px; max-height:220px; }
+.chart-card h3 { font-size:0.85em; color:#555; margin-bottom:6px; }
+.chart-card canvas { max-height:170px; }
 .no-actions { text-align:center; padding:40px; color:#999; font-size:1.1em; }
 .copy-btn { padding:8px 18px; background:var(--blue); color:#fff; border:none; border-radius:6px;
             cursor:pointer; font-size:0.85em; margin-left:auto; transition:all 0.15s; }
