@@ -90,6 +90,10 @@ def classify_issues(df):
         print("No errors found - all data flowing correctly!")
         return errors
 
+    # Enrich code-like descriptions from Databricks
+    from databricks_lookup import enrich_descriptions
+    errors, _ = enrich_descriptions(errors)
+
     # Assign owner: error-type default -> FIXED_OWNERS override -> location override
     merged_owners = {}
     merged_owners.update(OWNER_MAPPING)

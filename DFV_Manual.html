@@ -296,16 +296,74 @@ D767, D901, E295, E496, E467, E474, 5740, E230, D594</code></pre>
   </div>
 
   <h3>Owner 分配规则</h3>
-  <p>Owner 按 <strong>优先级从高到低</strong> 逐层判定，高优先级覆盖低优先级：</p>
+  <p>Owner 按 <strong>优先级从高到低</strong> 逐层判定，高优先级覆盖低优先级。判定流程如下：</p>
+
+  <h4>判断矩阵（Decision Matrix）</h4>
+  <pre><code>
+┌─ Step 1: Location 判断（最高优先级）
+│   Location ∈ {5740, E230}?
+│     → YES: HKTW not in scope, Owner = ""，不参与统计。 ✋ 结束
+│     → NO:  继续 ↓
+│
+├─ Step 2: Location 固定负责人
+│   Location ∈ {C937, D594, D767}?
+│     → YES: Owner = "Wu Wen hao"。 ✋ 结束
+│     → NO:  继续 ↓
+│
+├─ Step 3: Error Type 固定 Owner（FIXED_OWNERS）
+│   Error = "No SNP Assigned" 或 "SNP equals *99"?
+│     → YES: Owner = "GC DRP"。 ✋ 结束
+│     → NO:  继续 ↓
+│
+├─ Step 4: IOL Brand 判断（仅 "Missing Mat/Loc"）
+│   Error = "Missing Mat/Loc"?
+│     → YES:
+│       ├─ Description 含 "+"?
+│       │     → YES: Owner = "Lucy"。 ✋ 结束
+│       │     → NO:  继续 ↓
+│       ├─ Brand = HAIRRECIPE → Owner = "Guimin"
+│       ├─ Brand = REJOICE   → Owner = "Rebecca"
+│       ├─ Brand = PANTENE   → Owner = "Xueying"
+│       ├─ Brand = HD&amp;SHLDRS → Owner = "Becky"
+│       └─ 其他 Brand       → Owner = "DRP Planner / IOL"（默认）
+│     → NO:  继续 ↓
+│
+└─ Step 5: 默认 Owner（OWNER_MAPPING）
+    Error = "Matloc Deleted" 或 "Under Deletion"
+      → Owner = "DP Planner"
+    其他
+      → Owner = "CSP Planner"
+  </code></pre>
+
+  <h4>Owner Matrix 速查表</h4>
   <table>
-    <tr><th>优先级</th><th>条件</th><th>Owner</th><th>说明</th></tr>
-    <tr><td>1（最高）</td><td>Location ∈ {5740, E230}</td><td><em>（空）</em></td><td>HKTW - Not in scope，标记 Is_HKTW=True，不参与统计</td></tr>
-    <tr><td>2</td><td>Location ∈ {C937, D594, D767}</td><td>Wu Wen hao</td><td>指定 DC 固定负责人</td></tr>
-    <tr><td>3</td><td>Error = "No SNP Assigned"</td><td>GC DRP</td><td>FIXED_OWNERS 覆盖默认值</td></tr>
-    <tr><td>3</td><td>Error = "SNP equals *99"</td><td>GC DRP</td><td>FIXED_OWNERS 覆盖默认值</td></tr>
-    <tr><td>4（最低）</td><td>Error = "Missing Mat/Loc"</td><td>DRP Planner / IOL</td><td>OWNER_MAPPING 默认</td></tr>
-    <tr><td>4</td><td>Error = "Matloc Deleted"</td><td>DP Planner</td><td>OWNER_MAPPING 默认</td></tr>
-    <tr><td>4</td><td>Error = "Under Deletion"</td><td>DP Planner</td><td>OWNER_MAPPING 默认</td></tr>
+    <tr><th>优先级</th><th>判断条件</th><th>Owner</th><th>配置项 (config.py)</th></tr>
+    <tr><td>1（最高）</td><td>Location = 5740, E230</td><td><em>（空）</em> — HKTW</td><td><span class="inline-code">HKTW_LOCATIONS</span></td></tr>
+    <tr><td>2</td><td>Location = C937, D594, D767</td><td>Wu Wen hao</td><td><span class="inline-code">LOCATION_OWNERS</span></td></tr>
+    <tr><td>3</td><td>Error = No SNP Assigned</td><td>GC DRP</td><td><span class="inline-code">FIXED_OWNERS</span></td></tr>
+    <tr><td>3</td><td>Error = SNP equals *99</td><td>GC DRP</td><td><span class="inline-code">FIXED_OWNERS</span></td></tr>
+    <tr><td>4a</td><td>Missing Mat/Loc + Description 含 "+"</td><td>Lucy</td><td><span class="inline-code">IOL_PLUS_OWNER</span></td></tr>
+    <tr><td>4b</td><td>Missing Mat/Loc + Brand = HAIRRECIPE</td><td>Guimin</td><td rowspan="4"><span class="inline-code">IOL_BRAND_OWNERS</span></td></tr>
+    <tr><td>4b</td><td>Missing Mat/Loc + Brand = REJOICE</td><td>Rebecca</td></tr>
+    <tr><td>4b</td><td>Missing Mat/Loc + Brand = PANTENE</td><td>Xueying</td></tr>
+    <tr><td>4b</td><td>Missing Mat/Loc + Brand = HD&amp;SHLDRS</td><td>Becky</td></tr>
+    <tr><td>5</td><td>Matloc Deleted / Under Deletion</td><td>DP Planner</td><td rowspan="2"><span class="inline-code">OWNER_MAPPING</span></td></tr>
+    <tr><td>5</td><td>其他 Error</td><td>CSP Planner</td></tr>
+  </table>
+
+  <h4>Description 补全</h4>
+  <p>SAP 导出时部分 SKU 的 Description 是代码（与 APO_Product 相同），pipeline 会自动查询 <strong>Databricks</strong> 补全真实描述：</p>
+  <pre><code>cdl_ps_hana_prd.sl.ps_psc_sku_master → material_num + product_name_en</code></pre>
+  <p>连接配置在 <span class="inline-code">dfv_tool/.env</span>（不入 Git）。</p>
+
+  <h4>添加新规则指南</h4>
+  <table>
+    <tr><th>要添加的规则</th><th>修改位置 (config.py)</th><th>示例</th></tr>
+    <tr><td>新的 HKTW Location</td><td><span class="inline-code">HKTW_LOCATIONS</span></td><td>加入 <span class="inline-code">"D352"</span></td></tr>
+    <tr><td>新的 Location → 固定人</td><td><span class="inline-code">LOCATION_OWNERS</span></td><td><span class="inline-code">"A672": "张三"</span></td></tr>
+    <tr><td>新的 Error Type → 固定人</td><td><span class="inline-code">FIXED_OWNERS</span></td><td><span class="inline-code">"Under Deletion": "李四"</span></td></tr>
+    <tr><td>新的 Brand → IOL 负责人</td><td><span class="inline-code">IOL_BRAND_OWNERS</span></td><td><span class="inline-code">"NEWBRAND": "王五"</span></td></tr>
+    <tr><td>改 "+" 描述的负责人</td><td><span class="inline-code">IOL_PLUS_OWNER</span></td><td>改为 <span class="inline-code">"新人名"</span></td></tr>
   </table>
 
   <h3>Owner 修改方式</h3>
