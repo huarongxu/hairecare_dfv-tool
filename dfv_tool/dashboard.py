@@ -127,13 +127,6 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
 <div class="kpi-row" id="kpiRow"></div>
 
 <div class="main">
-  <div class="section-title">
-    Action Items <span class="badge" id="actionCount">0</span>
-    <button class="copy-btn" onclick="copyTable()">Copy Table</button>
-  </div>
-  <div class="filters" id="ownerFilters"></div>
-  <div id="actionTableWrap"></div>
-
   <div class="chart-row">
     <div class="chart-card">
       <h3>Volume Difference % (18 Months) &mdash; Target &lt; 2%</h3>
@@ -144,6 +137,13 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
       <canvas id="chartSKU"></canvas>
     </div>
   </div>
+
+  <div class="section-title">
+    Action Items <span class="badge" id="actionCount">0</span>
+    <button class="copy-btn" onclick="copyTable()">Copy Table</button>
+  </div>
+  <div class="filters" id="ownerFilters"></div>
+  <div id="actionTableWrap"></div>
 </div>
 
 <script>
@@ -254,22 +254,41 @@ function renderActions(errors) {
 function copyTable() {
   var table = document.getElementById("actionTable");
   if (!table) return;
+  // Build HTML table for rich paste (email)
+  var hdr = '#1a1a2e';
+  var html = '<table style="border-collapse:collapse;font-family:Segoe UI,sans-serif;font-size:12px;">';
   var rows = table.querySelectorAll("tr");
-  var tsv = [];
   for (var i = 0; i < rows.length; i++) {
+    html += '<tr>';
     var cells = rows[i].querySelectorAll("th, td");
-    var row = [];
     for (var j = 0; j < cells.length; j++) {
-      row.push(cells[j].innerText.replace(/\t/g, " "));
+      var tag = cells[j].tagName === 'TH' ? 'th' : 'td';
+      var style = tag === 'th'
+        ? 'background:' + hdr + ';color:#fff;padding:6px 10px;text-align:left;border:1px solid #ccc;'
+        : 'padding:5px 10px;border:1px solid #e0e0e0;' + (j === 5 ? 'text-align:right;' : '');
+      html += '<' + tag + ' style="' + style + '">' + cells[j].innerText + '</' + tag + '>';
     }
-    tsv.push(row.join("\t"));
+    html += '</tr>';
   }
-  var text = tsv.join("\n");
-  navigator.clipboard.writeText(text).then(function() {
-    var btn = document.querySelector(".copy-btn");
-    btn.textContent = "Copied!";
-    btn.classList.add("copied");
-    setTimeout(function() { btn.textContent = "Copy Table"; btn.classList.remove("copied"); }, 2000);
+  html += '</table>';
+  // Also build plain text version
+  var tsv = [];
+  for (var i2 = 0; i2 < rows.length; i2++) {
+    var cells2 = rows[i2].querySelectorAll("th, td");
+    var row = [];
+    for (var j2 = 0; j2 < cells2.length; j2++) row.push(cells2[j2].innerText.replace(/\t/g, ' '));
+    tsv.push(row.join('\t'));
+  }
+  var plain = tsv.join('\n');
+  // Write both HTML and plain text to clipboard
+  var blob = new Blob([html], {type: 'text/html'});
+  var blobText = new Blob([plain], {type: 'text/plain'});
+  var item = new ClipboardItem({'text/html': blob, 'text/plain': blobText});
+  navigator.clipboard.write([item]).then(function() {
+    var btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'Copy Table'; btn.classList.remove('copied'); }, 2000);
   });
 }
 
@@ -322,8 +341,36 @@ function renderCharts() {
           borderColor: "#0078d4", borderWidth: 1 }
       ]
     },
-    options: { responsive: true, plugins: { legend: { position: "bottom" } },
-               scales: { y: { beginAtZero: true, title: { display: true, text: "SKU Count" } } } }
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "bottom" },
+        datalabels: {
+          anchor: "end", align: "top", font: { weight: "bold", size: 11 },
+          formatter: function(v) { return v; }
+        }
+      },
+      scales: { y: { beginAtZero: true, title: { display: true, text: "SKU Count" } } }
+    },
+    plugins: [{
+      id: "barLabels",
+      afterDatasetsDraw: function(chart) {
+        var ctx = chart.ctx;
+        chart.data.datasets.forEach(function(ds, di) {
+          var meta = chart.getDatasetMeta(di);
+          meta.data.forEach(function(bar, idx) {
+            var val = ds.data[idx];
+            if (val == null) return;
+            ctx.save();
+            ctx.fillStyle = ds.borderColor || "#333";
+            ctx.font = "bold 11px Segoe UI,sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(val, bar.x, bar.y - 6);
+            ctx.restore();
+          });
+        });
+      }
+    }]
   });
 }
 
