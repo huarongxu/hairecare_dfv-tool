@@ -294,6 +294,26 @@ D767, D901, E295, E496, E467, E474, 5740, E230, D594</code></pre>
     <div class="alert-title">&#128161; 切换到其他 Category</div>
     只需修改 <span class="inline-code">config.py</span> 中的 <span class="inline-code">CATEGORY</span>（如 <span class="inline-code">"SKINCARE"</span>），然后重新运行即可。DRP_LOCATIONS 也需要相应调整。
   </div>
+
+  <h3>Owner 分配规则</h3>
+  <p>Owner 按 <strong>优先级从高到低</strong> 逐层判定，高优先级覆盖低优先级：</p>
+  <table>
+    <tr><th>优先级</th><th>条件</th><th>Owner</th><th>说明</th></tr>
+    <tr><td>1（最高）</td><td>Location ∈ {5740, E230}</td><td><em>（空）</em></td><td>HKTW - Not in scope，标记 Is_HKTW=True，不参与统计</td></tr>
+    <tr><td>2</td><td>Location ∈ {C937, D594, D767}</td><td>Wu Wen hao</td><td>指定 DC 固定负责人</td></tr>
+    <tr><td>3</td><td>Error = "No SNP Assigned"</td><td>GC DRP</td><td>FIXED_OWNERS 覆盖默认值</td></tr>
+    <tr><td>3</td><td>Error = "SNP equals *99"</td><td>GC DRP</td><td>FIXED_OWNERS 覆盖默认值</td></tr>
+    <tr><td>4（最低）</td><td>Error = "Missing Mat/Loc"</td><td>DRP Planner / IOL</td><td>OWNER_MAPPING 默认</td></tr>
+    <tr><td>4</td><td>Error = "Matloc Deleted"</td><td>DP Planner</td><td>OWNER_MAPPING 默认</td></tr>
+    <tr><td>4</td><td>Error = "Under Deletion"</td><td>DP Planner</td><td>OWNER_MAPPING 默认</td></tr>
+  </table>
+
+  <h3>Owner 修改方式</h3>
+  <table>
+    <tr><th>场景</th><th>方法</th><th>位置</th></tr>
+    <tr><td>改固定规则（影响未来所有 run）</td><td>修改 config.py</td><td><span class="inline-code">FIXED_OWNERS</span>, <span class="inline-code">LOCATION_OWNERS</span>, <span class="inline-code">HKTW_LOCATIONS</span></td></tr>
+    <tr><td>改单次结果（每个 item 不同人）</td><td>编辑 Excel → Sync 回 DB</td><td>编辑 <span class="inline-code">output/DFV_actions_*.xlsx</span> 的 Owner 列，然后运行 <span class="inline-code">python dfv_tool/sync_owners.py</span></td></tr>
+  </table>
 </section>
 
 <!-- ====== ARCHITECTURE ====== -->

@@ -117,9 +117,20 @@ OWNER_MAPPING = {
 }
 
 # Fixed owners - override by error type with specific names
-# These are applied AFTER OWNER_MAPPING during save_run
-# Set to actual person names for known assignments
+# Applied AFTER OWNER_MAPPING during classify_issues
 FIXED_OWNERS = {
-    # "Missing Mat/Loc": "John / IOL Team",
-    # "Matloc Deleted": "Jane",
+    "No SNP Assigned": "GC DRP",
+    "SNP equals *99": "GC DRP",
 }
+
+# Location-based owner overrides (applied after error-type mapping)
+# These override the owner for specific DC locations
+LOCATION_OWNERS = {
+    "C937": "Wu Wen hao",
+    "D594": "Wu Wen hao",
+    "D767": "Wu Wen hao",
+}
+
+# Additional HKTW locations (not in scope, owner = blank)
+# 5740 is always HKTW; add more here
+HKTW_LOCATIONS = {"5740", "E230"}

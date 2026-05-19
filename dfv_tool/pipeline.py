@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import (
     OUTPUT_DIR, ERROR_TYPES, OWNER_MAPPING, DRP_LOCATIONS, CATEGORY,
+    FIXED_OWNERS, LOCATION_OWNERS, HKTW_LOCATIONS,
 )
 
 
@@ -88,8 +89,16 @@ def classify_issues(df):
         print("No errors found - all data flowing correctly!")
         return errors
 
-    # Assign owner
-    errors["Owner"] = errors["Error_Message"].map(OWNER_MAPPING).fillna("CSP Planner")
+    # Assign owner: error-type default -> FIXED_OWNERS override -> location override
+    merged_owners = {}
+    merged_owners.update(OWNER_MAPPING)
+    merged_owners.update(FIXED_OWNERS)  # FIXED_OWNERS takes priority
+    errors["Owner"] = errors["Error_Message"].map(merged_owners).fillna("CSP Planner")
+
+    # Location-based owner override
+    for loc, owner_name in LOCATION_OWNERS.items():
+        mask = errors["APO_Location"] == loc
+        errors.loc[mask, "Owner"] = owner_name
 
     # Generate unique key
     errors["Key"] = errors["APO_Product"].astype(str) + errors["APO_Location"].astype(str)
@@ -110,7 +119,7 @@ def classify_issues(df):
         loc = row["APO_Location"]
         prod = row["APO_Product"]
         if msg == "Missing Mat/Loc":
-            if loc == "5740":
+            if loc in HKTW_LOCATIONS:
                 return "HKTW location", "HKTW - No action needed"
             elif prod in all_loc_products:
                 return "No code activation requested", "CSP to investigate with IOL/SIP planner"
@@ -119,7 +128,7 @@ def classify_issues(df):
         elif msg == "Matloc Deleted":
             return "Material/location deleted but still has forecast", "Contact DP to remove forecast"
         elif msg == "No SNP Assigned":
-            if loc == "5740":
+            if loc in HKTW_LOCATIONS:
                 return "HKTW location", "HKTW - No action needed"
             else:
                 return "DRP master data incomplete - no SNP planner", "DRP to complete master data"
@@ -133,8 +142,10 @@ def classify_issues(df):
     errors["Reason"] = reason_action[0]
     errors["Action"] = reason_action[1]
 
-    # Flag HKTW items (location 5740 = Hong Kong/Taiwan, usually no action needed)
-    errors["Is_HKTW"] = errors["APO_Location"] == "5740"
+    # Flag HKTW items (not in scope locations)
+    errors["Is_HKTW"] = errors["APO_Location"].isin(HKTW_LOCATIONS)
+    # HKTW items: owner = blank
+    errors.loc[errors["Is_HKTW"], "Owner"] = ""
 
     print(f"\nIssue Classification:")
     print(f"  Total errors: {len(errors)}")
@@ -257,6 +268,7 @@ def export_results(errors, summary, output_dir):
                 detail_cols = {
                     "File_ID": "File ID",
                     "APO_Product": "APO - Product",
+                    "Description": "Description",
                     "Category": "Category",
                     "Brand": "Brand",
                     "APO_Location": "APO - Location",
