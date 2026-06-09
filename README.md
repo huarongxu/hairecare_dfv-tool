@@ -42,6 +42,17 @@ pip install -r requirements.txt
 python dfv_tool/run.py
 ```
 
+## One-Click Launch (Windows)
+
+Double-click `start_dfv.bat` in the project root.
+
+What it does:
+- Validates/rebuilds `.venv` if needed
+- Installs dependencies from `requirements.txt`
+- Runs full DFV automation (`dfv_tool/run.py`)
+- Falls back to `dfv_tool/pipeline.py` if AO prompt flow fails
+- Opens `output/DFV_Dashboard.html` automatically
+
 ## Configuration
 
 Edit `dfv_tool/config.py`:

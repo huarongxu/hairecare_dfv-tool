@@ -126,9 +126,20 @@ FIXED_OWNERS = {
 # Location-based owner overrides (applied after error-type mapping)
 # These override the owner for specific DC locations
 LOCATION_OWNERS = {
+    "C819": "Wu Wen hao",
     "C937": "Wu Wen hao",
     "D594": "Wu Wen hao",
     "D767": "Wu Wen hao",
+    "E546": "Wu Wen hao",
+    "E560": "Wu Wen hao",
+    "E564-FJFZ": "Wu Wen hao",
+    "E564-JXNC": "Wu Wen hao",
+    "E556-SD01": "Wu Wen hao",
+    "E556-SD02": "Wu Wen hao",
+    "E568": "Wu Wen hao",
+    "E569-CQCQ": "Wu Wen hao",
+    "E569-GZGY": "Wu Wen hao",
+    "E569-YNKM": "Wu Wen hao",
 }
 
 # IOL Owner assignment (for "Missing Mat/Loc" items only)

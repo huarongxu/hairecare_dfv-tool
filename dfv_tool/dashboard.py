@@ -294,10 +294,10 @@ function copyTable() {
 }
 
 function syncOwners() {
-  var cmd = "cd c:\\0.Local\\17.DFV && python dfv_tool/sync_owners.py";
+  var cmd = "sync_owners.bat";
   navigator.clipboard.writeText(cmd).then(function() {
     var btn = document.querySelector(".sync-btn");
-    btn.textContent = "Command Copied!";
+    btn.textContent = "Run sync_owners.bat";
     btn.classList.add("done");
     setTimeout(function() { btn.textContent = "Sync Owners"; btn.classList.remove("done"); }, 3000);
   });
@@ -328,7 +328,7 @@ function renderCharts() {
       ]
     },
     options: { responsive: true, plugins: { legend: { position: "bottom" } },
-               scales: { y: { beginAtZero: true, title: { display: true, text: "%" } } } }
+               scales: { y: { min: 0.2, ticks: { stepSize: 0.1 }, title: { display: true, text: "%" } } } }
   });
 
   new Chart(document.getElementById("chartSKU"), {

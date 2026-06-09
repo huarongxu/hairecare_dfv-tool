@@ -20,6 +20,7 @@ Output: output/DFV_actions_YYYYMMDD.xlsx
 import win32com.client
 import win32gui
 import win32clipboard
+import pythoncom
 import ctypes
 import csv
 import os
@@ -36,6 +37,64 @@ VARIANT_NAME = "HAIRCARE_XA"
 
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def find_excel_by_workbook(path):
+    """Find the Excel.Application that actually owns `path` via the Running
+    Object Table (ROT).
+
+    GetObject(Class="Excel.Application") binds to whichever Excel instance
+    registered first in the ROT. When the user has multiple Excel instances
+    open (or a stale/empty background instance), that may NOT be the instance
+    holding our workbook, so Workbooks.Count stays 0 forever and the tool
+    appears to hang. Matching by workbook path is reliable across instances.
+
+    Returns (app, workbook) or (None, None) if the workbook is not open.
+    """
+    target = os.path.basename(path).lower()
+    try:
+        ctx = pythoncom.CreateBindCtx(0)
+        rot = pythoncom.GetRunningObjectTable()
+    except Exception:
+        return None, None
+    for mk in rot:
+        try:
+            name = mk.GetDisplayName(ctx, None)
+        except Exception:
+            continue
+        if not name or not name.lower().endswith(target):
+            continue
+        try:
+            obj = rot.GetObject(mk)
+            disp = obj.QueryInterface(pythoncom.IID_IDispatch)
+            wb = win32com.client.Dispatch(disp)
+            return wb.Application, wb
+        except Exception:
+            continue
+    return None, None
+
+
+def data_signature(ws):
+    """Lightweight content fingerprint of the Main data block.
+
+    Used to tell whether a BW refresh has actually replaced the data, rather
+    than just checking row count (the previous run's stale data is still in
+    the sheet, so a row-count check passes immediately and exports OLD data).
+
+    Returns (last_row, sum_IDP, sum_APO) or None if the sheet is busy.
+    """
+    try:
+        last_row = ws.Cells(ws.Rows.Count, 2).End(-4162).Row
+        if last_row < 22:
+            return (last_row, 0.0, 0.0)
+        wf = ws.Application.WorksheetFunction
+        col_idp = ws.Range(ws.Cells(22, 9), ws.Cells(last_row, 9))
+        col_apo = ws.Range(ws.Cells(22, 10), ws.Cells(last_row, 10))
+        s_idp = round(float(wf.Sum(col_idp)), 3)
+        s_apo = round(float(wf.Sum(col_apo)), 3)
+        return (last_row, s_idp, s_apo)
+    except Exception:
+        return None
 
 
 def real_click(x, y, pause=0.8):
@@ -102,26 +161,22 @@ def fill_variable(dlg, value, input_x, input_y):
 # ============================================================
 def step1_open_workbook():
     log("Step 1: Opening workbook...")
-    try:
-        xl = win32com.client.GetObject(Class="Excel.Application")
-        if xl.Workbooks.Count > 0 and xl.ActiveWorkbook:
-            log(f"  Already open: {xl.ActiveWorkbook.Name}")
-            return xl
-    except Exception:
-        pass
+
+    # Already open? Match by workbook path (robust against multiple instances).
+    app, wb = find_excel_by_workbook(WORKBOOK_PATH)
+    if app is not None:
+        log(f"  Already open: {wb.Name}")
+        return app
 
     log(f"  Launching: {os.path.basename(WORKBOOK_PATH)}")
     os.startfile(WORKBOOK_PATH)
 
     for i in range(40):
         time.sleep(3)
-        try:
-            xl = win32com.client.GetObject(Class="Excel.Application")
-            if xl.Workbooks.Count > 0:
-                log(f"  Ready ({i*3}s): {xl.ActiveWorkbook.Name}")
-                return xl
-        except Exception:
-            pass
+        app, wb = find_excel_by_workbook(WORKBOOK_PATH)
+        if app is not None:
+            log(f"  Ready ({i*3}s): {wb.Name}")
+            return app
     raise RuntimeError("Excel did not open within 120s")
 
 
@@ -322,40 +377,69 @@ def step4_fill_prompts(hwnd):
 # ============================================================
 # STEP 5: Wait for BW data
 # ============================================================
-def step5_wait_data(xl):
-    log("Step 5: Waiting for BW data...")
+def step5_wait_data(xl, baseline=None):
+    log("Step 5: Waiting for BW data refresh...")
+    log(f"  Pre-refresh baseline: {baseline}")
 
     # Re-acquire COM object — the background Refresh thread may have
     # disrupted the original COM proxy in this apartment.
+    ws = None
     for retry in range(5):
         try:
-            xl = win32com.client.GetObject(Class="Excel.Application")
-            ws = xl.ActiveWorkbook.Sheets("Main")
-            break
+            app, wb = find_excel_by_workbook(WORKBOOK_PATH)
+            if app is not None:
+                xl = app
+                ws = wb.Sheets("Main")
+                break
         except Exception:
-            log(f"  COM reconnect attempt {retry+1}...")
-            time.sleep(3)
-    else:
+            pass
+        log(f"  COM reconnect attempt {retry+1}...")
+        time.sleep(3)
+    if ws is None:
         raise RuntimeError("Cannot re-acquire Excel COM object")
 
+    changed = False
+    last_sig = None
+    stable_count = 0
     for w in range(120):
         time.sleep(3)
-        try:
-            lr = ws.Cells(ws.Rows.Count, 2).End(-4162).Row
-            if lr > 100:
-                log(f"  Data loaded: {lr} rows ({w*3}s)")
-                return lr
-        except Exception:
-            # COM object may need refresh after data load completes
+        sig = data_signature(ws)
+        if sig is None:
+            # COM object may be busy/stale during refresh; reconnect.
             try:
-                xl = win32com.client.GetObject(Class="Excel.Application")
-                ws = xl.ActiveWorkbook.Sheets("Main")
+                app, wb = find_excel_by_workbook(WORKBOOK_PATH)
+                if app is not None:
+                    xl = app
+                    ws = wb.Sheets("Main")
             except Exception:
                 pass
-        if w % 10 == 0 and w > 0:
-            log(f"  Still loading... ({w*3}s)")
+            continue
 
-    raise RuntimeError("Data did not load within 360s")
+        lr = sig[0]
+        # Has the data actually changed from the stale pre-refresh baseline?
+        if baseline is None or sig != baseline:
+            changed = True
+
+        if changed and lr > 100:
+            # Wait until the signature stops changing (refresh finished writing).
+            if sig == last_sig:
+                stable_count += 1
+            else:
+                stable_count = 0
+            if stable_count >= 2:  # stable across ~2 consecutive polls (~6s)
+                log(f"  Data refreshed & stable: {lr} rows, sig={sig} ({w*3}s)")
+                return lr
+
+        last_sig = sig
+        if w % 10 == 0 and w > 0:
+            state = "changed" if changed else "UNCHANGED (still stale)"
+            log(f"  Still refreshing... {state}, sig={sig} ({w*3}s)")
+
+    if not changed:
+        raise RuntimeError(
+            "Data never changed from the pre-refresh baseline within 360s — "
+            "BW refresh likely failed; refusing to export STALE data.")
+    raise RuntimeError("Data did not stabilize within 360s")
 
 
 # ============================================================
@@ -418,12 +502,21 @@ def main():
 
     xl = step1_open_workbook()
     main_win = step2_wait_ao(xl)
+
+    # Snapshot the (stale) data currently in the sheet BEFORE refreshing, so
+    # step5 can detect when the BW refresh has actually replaced it.
+    _app, _wb = find_excel_by_workbook(WORKBOOK_PATH)
+    baseline = data_signature(_wb.Sheets("Main")) if _wb is not None else None
+    log(f"Baseline data signature: {baseline}")
+
     hwnd = step3_refresh(xl, main_win)
     step4_fill_prompts(hwnd)
 
-    last_row = step5_wait_data(xl)
-    # Re-acquire COM after data load
-    xl = win32com.client.GetObject(Class="Excel.Application")
+    last_row = step5_wait_data(xl, baseline)
+    # Re-acquire COM after data load (match by workbook path)
+    app, _wb = find_excel_by_workbook(WORKBOOK_PATH)
+    if app is not None:
+        xl = app
     csv_path = step6_export(xl, last_row)
     df, errors, summary = step7_pipeline(csv_path)
 

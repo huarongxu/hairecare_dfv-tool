@@ -143,6 +143,39 @@ def get_errors_for_run(run_id):
     return [dict(r) for r in rows]
 
 
+def delete_runs(run_ids):
+    """Delete one or more runs (and all their error rows) by run id.
+
+    Args:
+        run_ids: a single run id or an iterable of run ids.
+
+    Returns:
+        (deleted_runs, deleted_errors) counts.
+    """
+    if isinstance(run_ids, (int, str)):
+        run_ids = [run_ids]
+    ids = [int(r) for r in run_ids]
+    if not ids:
+        return (0, 0)
+
+    conn = _get_conn()
+    placeholders = ",".join("?" * len(ids))
+    cur_e = conn.execute(
+        f"DELETE FROM errors WHERE run_id IN ({placeholders})", ids)
+    deleted_errors = cur_e.rowcount
+    cur_r = conn.execute(
+        f"DELETE FROM runs WHERE id IN ({placeholders})", ids)
+    deleted_runs = cur_r.rowcount
+    conn.commit()
+    conn.close()
+    return (deleted_runs, deleted_errors)
+
+
+def delete_run(run_id):
+    """Delete a single run (and its errors) by run id."""
+    return delete_runs([run_id])
+
+
 def get_all_data():
     """Get all runs + their errors. For dashboard generation."""
     runs = get_all_runs()
@@ -191,8 +224,18 @@ def update_owners(mapping, run_id=None):
 
 def sync_owners_from_excel(excel_path, run_id=None):
     """
-    Read Owner column from edited Excel, sync back to DB.
-    Matches by APO_Product + APO_Location + Error_Message.
+    Read editable columns (Owner, Action, Reason) from an edited DFV_actions
+    workbook and sync them back to the DB. Matches rows by
+    APO_Product + APO_Location + Error_Message.
+
+    Reads BOTH the date-named detail sheet AND every per-owner sheet, so edits
+    made in either place are picked up. Per-owner sheets are processed AFTER
+    the date sheet, so if the same row was edited in a per-owner tab that value
+    wins (per-owner tabs are the natural per-planner working surface).
+
+    Column headers differ between the two sheet styles and both are handled:
+        date sheet:  "APO - Product", "APO - Location", "Error Message"
+        owner sheet: "APO_Product",   "APO_Location",   "Error_Message"
 
     Args:
         excel_path: Path to edited DFV_actions_YYYYMMDD.xlsx
@@ -202,32 +245,32 @@ def sync_owners_from_excel(excel_path, run_id=None):
         from history import sync_owners_from_excel
         sync_owners_from_excel("output/DFV_actions_20260518.xlsx")
     """
-    # Read the date-named sheet (second sheet, skip Summary)
+    # Aliases: every accepted header -> canonical key
+    PRODUCT_HDRS = ("APO - Product", "APO_Product")
+    LOCATION_HDRS = ("APO - Location", "APO_Location")
+    ERROR_HDRS = ("Error Message", "Error_Message")
+
+    def _find(df, headers):
+        for h in headers:
+            if h in df.columns:
+                return h
+        return None
+
+    def _clean(v):
+        return "" if pd.isna(v) else str(v)
+
     xl = pd.ExcelFile(excel_path)
-    # Find the detail sheet (named like 20260518)
-    detail_sheet = None
-    for name in xl.sheet_names:
-        if name.isdigit() and len(name) == 8:
-            detail_sheet = name
-            break
-    if detail_sheet is None:
-        detail_sheet = xl.sheet_names[1] if len(xl.sheet_names) > 1 else xl.sheet_names[0]
 
-    df = pd.read_excel(excel_path, sheet_name=detail_sheet)
+    # Order sheets: date-named detail first, then per-owner sheets (override),
+    # always skipping the Summary sheet.
+    date_sheets = [n for n in xl.sheet_names if n.isdigit() and len(n) == 8]
+    owner_sheets = [n for n in xl.sheet_names
+                    if n not in date_sheets and n.lower() != "summary"]
+    ordered_sheets = date_sheets + owner_sheets
+    if not ordered_sheets:
+        raise ValueError("No editable sheets found in workbook")
 
-    # Map Excel column names to DB columns
-    col_map = {
-        "APO - Product": "apo_product",
-        "APO - Location": "apo_location",
-        "Error Message": "error_message",
-        "Owner": "owner",
-    }
-    # Check required columns exist
-    missing = [c for c in col_map if c not in df.columns]
-    if missing:
-        raise ValueError(f"Excel missing columns: {missing}")
-
-    # Determine run_id
+    # Determine run_id (latest run if not given)
     if run_id is None:
         conn = _get_conn()
         row = conn.execute("SELECT id FROM runs ORDER BY run_date DESC LIMIT 1").fetchone()
@@ -236,22 +279,54 @@ def sync_owners_from_excel(excel_path, run_id=None):
         run_id = row["id"]
         conn.close()
 
-    # Update each row
     conn = _get_conn()
     updated = 0
-    for _, row in df.iterrows():
-        product = str(row["APO - Product"])
-        location = str(row["APO - Location"])
-        error_msg = str(row["Error Message"])
-        owner = str(row["Owner"])
+    used_action = False
+    used_reason = False
 
-        cur = conn.execute("""
-            UPDATE errors SET owner = ?
-            WHERE run_id = ? AND apo_product = ? AND apo_location = ? AND error_message = ?
-        """, (owner, run_id, product, location, error_msg))
-        updated += cur.rowcount
+    for sheet in ordered_sheets:
+        df = pd.read_excel(excel_path, sheet_name=sheet)
+
+        p_col = _find(df, PRODUCT_HDRS)
+        l_col = _find(df, LOCATION_HDRS)
+        e_col = _find(df, ERROR_HDRS)
+        if not (p_col and l_col and e_col and "Owner" in df.columns):
+            # Not a recognizable detail/owner sheet; skip it.
+            continue
+
+        has_action = "Action" in df.columns
+        has_reason = "Reason" in df.columns
+        used_action = used_action or has_action
+        used_reason = used_reason or has_reason
+
+        set_cols = ["owner = ?"]
+        if has_action:
+            set_cols.append("action = ?")
+        if has_reason:
+            set_cols.append("reason = ?")
+        set_clause = ", ".join(set_cols)
+
+        for _, row in df.iterrows():
+            product = str(row[p_col])
+            location = str(row[l_col])
+            error_msg = str(row[e_col])
+
+            params = [_clean(row["Owner"])]
+            if has_action:
+                params.append(_clean(row["Action"]))
+            if has_reason:
+                params.append(_clean(row["Reason"]))
+            params.extend([run_id, product, location, error_msg])
+
+            cur = conn.execute(f"""
+                UPDATE errors SET {set_clause}
+                WHERE run_id = ? AND apo_product = ? AND apo_location = ? AND error_message = ?
+            """, params)
+            updated += cur.rowcount
 
     conn.commit()
     conn.close()
-    print(f"Synced {updated} owners from Excel (run_id={run_id})")
+    synced_cols = ["Owner"] + (["Action"] if used_action else []) + (["Reason"] if used_reason else [])
+    print(f"Synced {updated} row-updates from {len(ordered_sheets)} sheet(s) "
+          f"(run_id={run_id}) | columns: {', '.join(synced_cols)}")
     return updated
