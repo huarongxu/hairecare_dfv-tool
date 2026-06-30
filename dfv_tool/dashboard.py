@@ -51,79 +51,126 @@ def _get_template():
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DFV Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root { --blue:#0078d4; --dark:#1a1a2e; --bg:#f5f6fa; --card:#fff; --border:#e2e5ea;
-         --green:#28a745; --red:#dc3545; --orange:#fd7e14; }
+:root {
+  --bg:#eef2f7; --card:#ffffff; --text:#0f172a; --text2:#64748b; --text3:#94a3b8;
+  --border:#e2e8f0; --border2:#eef2f6;
+  --primary:#2563eb; --primary-d:#1d4ed8; --primary-l:#eff4ff;
+  --green:#16a34a; --red:#dc2626; --amber:#d97706;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.06);
+  --shadow-md:0 6px 18px rgba(15,23,42,.08);
+  --radius:12px;
+}
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
-.topbar { background:var(--dark); color:#fff; padding:18px 32px; display:flex;
-           align-items:center; justify-content:space-between; }
-.topbar h1 { font-size:1.3em; font-weight:400; letter-spacing:1px; }
-.topbar .week-sel { display:flex; align-items:center; gap:10px; }
-.topbar .sync-btn { padding:7px 16px; border-radius:5px; border:1px solid #555;
-                    background:#2a2a4a; color:#ddd; font-size:0.82em; cursor:pointer;
-                    transition:all 0.15s; }
-.topbar .sync-btn:hover { background:var(--blue); color:#fff; border-color:var(--blue); }
+body { font-family:'Inter','Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text);
+       font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; }
+
+.topbar { background:linear-gradient(120deg,#0f172a 0%,#15233f 55%,#1e3a8a 150%); color:#fff;
+          padding:15px 32px; display:flex; align-items:center; justify-content:space-between;
+          box-shadow:var(--shadow-sm); position:sticky; top:0; z-index:100; }
+.topbar .brand { display:flex; align-items:center; gap:13px; }
+.topbar .logo { width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#2563eb);
+                display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;
+                letter-spacing:.5px; color:#fff; box-shadow:0 2px 10px rgba(37,99,235,.55); }
+.topbar h1 { font-size:1.12em; font-weight:700; letter-spacing:.2px; line-height:1.2; }
+.topbar h1 small { display:block; font-size:.58em; font-weight:400; color:#94a3b8; letter-spacing:.4px; margin-top:3px; }
+.topbar .week-sel { display:flex; align-items:center; gap:12px; }
+.topbar .sync-btn { padding:8px 16px; border-radius:8px; border:1px solid rgba(255,255,255,.18);
+                    background:rgba(255,255,255,.07); color:#e2e8f0; font-size:.8em; font-weight:500;
+                    cursor:pointer; transition:all .15s; }
+.topbar .sync-btn:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
 .topbar .sync-btn.done { background:var(--green); color:#fff; border-color:var(--green); }
-.topbar select { padding:6px 12px; border-radius:4px; border:1px solid #555;
-                  background:#2a2a4a; color:#fff; font-size:0.9em; cursor:pointer; }
-.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:24px 32px 8px; }
-.kpi { background:var(--card); border-radius:8px; padding:20px 24px; border-left:4px solid var(--blue); }
-.kpi-label { font-size:0.8em; color:#777; text-transform:uppercase; letter-spacing:0.5px; }
-.kpi-value { font-size:1.8em; font-weight:600; margin:4px 0; }
-.kpi-sub { font-size:0.82em; color:#999; }
-.kpi.on-track { border-left-color:var(--green); }
-.kpi.off-track { border-left-color:var(--red); }
-.main { padding:16px 32px 40px; }
-.section-title { font-size:1.15em; font-weight:600; color:var(--dark);
-                  margin:24px 0 12px; display:flex; align-items:center; gap:12px; }
-.section-title .badge { background:var(--red); color:#fff; padding:2px 10px;
-                         border-radius:12px; font-size:0.75em; }
-.filters { display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
-.filters button { padding:6px 16px; border:1px solid var(--border); border-radius:20px;
-                   background:#fff; cursor:pointer; font-size:0.82em; transition:all 0.15s; }
-.filters button:hover { border-color:var(--blue); color:var(--blue); }
-.filters button.active { background:var(--blue); color:#fff; border-color:var(--blue); }
-.action-table { width:100%; border-collapse:collapse; font-size:0.85em; background:#fff;
-                 border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
-.action-table thead th { background:var(--dark); color:#fff; padding:10px 10px;
-                          text-align:left; font-weight:500; position:sticky; top:0; }
-.action-table tbody td { padding:9px 10px; border-bottom:1px solid #f0f0f0; }
-.action-table tbody tr:hover { background:#f0f6ff; }
+.topbar .sel-label { font-size:.78em; color:#94a3b8; }
+.topbar select { padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.18);
+                 background:rgba(255,255,255,.07); color:#fff; font-size:.84em; cursor:pointer; }
+.topbar select option { color:#0f172a; }
+
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; padding:24px 32px 6px;
+           max-width:1600px; margin:0 auto; }
+.kpi { background:var(--card); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow-sm);
+       border:1px solid var(--border); position:relative; overflow:hidden; }
+.kpi::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--primary); }
+.kpi.on-track::before { background:var(--green); }
+.kpi.off-track::before { background:var(--red); }
+.kpi-label { font-size:.7em; color:var(--text2); text-transform:uppercase; letter-spacing:.7px; font-weight:600; }
+.kpi-value { font-size:1.9em; font-weight:700; margin:6px 0 2px; letter-spacing:-.5px; }
+.kpi-sub { font-size:.78em; color:var(--text3); }
+.kpi.on-track .kpi-value { color:var(--green); }
+.kpi.off-track .kpi-value { color:var(--red); }
+
+.main { padding:14px 32px 48px; max-width:1600px; margin:0 auto; }
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px; }
+.chart-row-3 { grid-template-columns:repeat(3,1fr); }
+.chart-card { background:var(--card); border-radius:var(--radius); padding:18px 20px;
+              box-shadow:var(--shadow-sm); border:1px solid var(--border); display:flex; flex-direction:column; }
+.chart-card h3 { font-size:.72em; color:var(--text2); margin-bottom:14px; text-transform:uppercase;
+                 letter-spacing:.6px; font-weight:700; }
+.chart-card h3 span { text-transform:none; letter-spacing:0; color:var(--text3); font-weight:400; }
+.chart-card canvas { max-height:260px; }
+
+.section-title { font-size:1.05em; font-weight:700; color:var(--text); margin:30px 0 14px;
+                 display:flex; align-items:center; gap:12px; }
+.section-title .badge { background:var(--red); color:#fff; padding:3px 11px; border-radius:20px;
+                        font-size:.7em; font-weight:600; }
+.toolbar { display:flex; flex-wrap:wrap; gap:20px; align-items:center; margin-bottom:14px; }
+.filter-group { display:flex; align-items:center; gap:9px; }
+.filter-label { font-size:.68em; text-transform:uppercase; letter-spacing:.6px; color:var(--text3); font-weight:700; }
+.filters { display:flex; gap:7px; flex-wrap:wrap; }
+.filters button { padding:6px 14px; border:1px solid var(--border); border-radius:18px;
+                  background:#fff; color:var(--text2); cursor:pointer; font-size:.78em; font-weight:500;
+                  transition:all .15s; }
+.filters button:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-l); }
+.filters button.active { background:var(--primary); color:#fff; border-color:var(--primary);
+                         box-shadow:0 2px 6px rgba(37,99,235,.3); }
+
+.table-wrap { background:#fff; border-radius:var(--radius); border:1px solid var(--border);
+              box-shadow:var(--shadow-sm); overflow:hidden; }
+.action-table { width:100%; border-collapse:collapse; font-size:.82em; }
+.action-table thead th { background:#0f172a; color:#e2e8f0; padding:11px 12px; text-align:left;
+                         font-weight:600; font-size:.92em; letter-spacing:.2px; position:sticky; top:0; white-space:nowrap; }
+.action-table tbody td { padding:10px 12px; border-bottom:1px solid var(--border2); color:#334155; }
+.action-table tbody tr:nth-child(even) { background:#fafbfc; }
+.action-table tbody tr:hover { background:var(--primary-l); }
+.action-table tbody tr:last-child td { border-bottom:none; }
 .action-table .owner-cell { white-space:nowrap; }
-.tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.78em; font-weight:600; }
-.tag-dp { background:#fff3cd; color:#856404; }
-.tag-drp { background:#cce5ff; color:#004085; }
-.tag-iol { background:#d4edda; color:#155724; }
-.tag-high { background:#f8d7da; color:#842029; }
-.tag-mid { background:#fff3cd; color:#856404; }
-.tag-low { background:#d4edda; color:#155724; }
-.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:19px; margin-top:26px; }
-.chart-card { background:#fff; border-radius:8px; padding:18px 19px; max-height:310px; }
-.chart-card h3 { font-size:0.92em; color:#555; margin-bottom:10px; }
-.chart-card canvas { max-height:250px; }
-.no-actions { text-align:center; padding:40px; color:#999; font-size:1.1em; }
-.copy-btn { padding:8px 18px; background:var(--blue); color:#fff; border:none; border-radius:6px;
-            cursor:pointer; font-size:0.85em; margin-left:auto; transition:all 0.15s; }
-.copy-btn:hover { background:#005a9e; }
-.copy-btn.copied { background:var(--green); }
+.tag { display:inline-block; padding:3px 9px; border-radius:20px; font-size:.74em; font-weight:600; white-space:nowrap; }
+.tag-dp { background:#fef3c7; color:#92400e; }
+.tag-drp { background:#dbeafe; color:#1e40af; }
+.tag-iol { background:#dcfce7; color:#166534; }
+.tag-high { background:#fee2e2; color:#991b1b; }
+.tag-mid { background:#fef3c7; color:#92400e; }
+.tag-low { background:#dcfce7; color:#166534; }
+.no-actions { text-align:center; padding:48px; color:var(--text3); font-size:1.05em; }
+.copy-btn { padding:8px 16px; background:var(--primary); color:#fff; border:none; border-radius:8px;
+            cursor:pointer; font-size:.8em; font-weight:600; margin-left:auto; transition:all .15s;
+            box-shadow:0 2px 6px rgba(37,99,235,.25); }
+.copy-btn:hover { background:var(--primary-d); }
+.copy-btn.copied { background:var(--green); box-shadow:none; }
+@media(max-width:1100px) { .chart-row-3 { grid-template-columns:1fr; } }
 @media(max-width:900px) {
   .kpi-row { grid-template-columns:repeat(2,1fr); }
   .chart-row { grid-template-columns:1fr; }
 }
 @media(max-width:600px) {
   .kpi-row { grid-template-columns:1fr; }
-  .topbar { flex-direction:column; gap:10px; }
+  .topbar { flex-direction:column; gap:12px; }
+  .main { padding:14px 16px 40px; }
 }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <h1>DFV Dashboard</h1>
+  <div class="brand">
+    <div class="logo">DFV</div>
+    <h1>Demand Flow Validation<small>Forecast Flow Health Check</small></h1>
+  </div>
   <div class="week-sel">
     <button class="sync-btn" onclick="syncOwners()" title="Copy sync command to clipboard">Sync Owners</button>
-    <span style="font-size:0.85em;color:#aaa;">Select Week:</span>
+    <span class="sel-label">Week</span>
     <select id="weekPicker" onchange="switchWeek(this.value)"></select>
   </div>
 </div>
@@ -142,14 +189,18 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
     </div>
   </div>
 
-  <div class="chart-row">
+  <div class="chart-row chart-row-3">
     <div class="chart-card">
-      <h3>Action Priority <span style="color:#999;font-weight:400">(current view)</span></h3>
+      <h3>Action Priority <span>(current view)</span></h3>
       <canvas id="chartPriority"></canvas>
     </div>
     <div class="chart-card">
-      <h3>Aging Distribution <span style="color:#999;font-weight:400">(weeks since first seen)</span></h3>
+      <h3>Aging Distribution <span>(weeks since first seen)</span></h3>
       <canvas id="chartAging"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>By Owner <span>(actionable items)</span></h3>
+      <canvas id="chartOwner"></canvas>
     </div>
   </div>
 
@@ -157,9 +208,11 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
     Action Items <span class="badge" id="actionCount">0</span>
     <button class="copy-btn" onclick="copyTable()">Copy Table</button>
   </div>
-  <div class="filters" id="priorityFilters"></div>
-  <div class="filters" id="ownerFilters"></div>
-  <div id="actionTableWrap"></div>
+  <div class="toolbar">
+    <div class="filter-group"><span class="filter-label">Priority</span><div class="filters" id="priorityFilters"></div></div>
+    <div class="filter-group"><span class="filter-label">Owner</span><div class="filters" id="ownerFilters"></div></div>
+  </div>
+  <div class="table-wrap" id="actionTableWrap"></div>
 </div>
 
 <script>
@@ -175,7 +228,61 @@ for (var i = 0; i < DATA.length; i++) {
 
 var currentFilter = "all";
 var currentPriority = "all";
-var priorityChart = null, agingChart = null;
+var priorityChart = null, agingChart = null, ownerChart = null;
+
+// Inline plugins to draw value labels directly on the charts (no extra CDN).
+var doughnutLabels = {
+  id: "doughnutLabels",
+  afterDatasetsDraw: function(chart) {
+    var ctx = chart.ctx;
+    chart.getDatasetMeta(0).data.forEach(function(arc, i) {
+      var val = chart.data.datasets[0].data[i];
+      if (!val) return;
+      var p = arc.tooltipPosition();
+      ctx.save();
+      ctx.fillStyle = "#fff";
+      ctx.font = "700 13px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(val, p.x, p.y);
+      ctx.restore();
+    });
+  }
+};
+var barTopLabels = {
+  id: "barTopLabels",
+  afterDatasetsDraw: function(chart) {
+    var ctx = chart.ctx;
+    chart.getDatasetMeta(0).data.forEach(function(bar, i) {
+      var val = chart.data.datasets[0].data[i];
+      if (val == null) return;
+      ctx.save();
+      ctx.fillStyle = "#334155";
+      ctx.font = "700 12px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(val, bar.x, bar.y - 5);
+      ctx.restore();
+    });
+  }
+};
+var hbarLabels = {
+  id: "hbarLabels",
+  afterDatasetsDraw: function(chart) {
+    var ctx = chart.ctx;
+    chart.getDatasetMeta(0).data.forEach(function(bar, i) {
+      var val = chart.data.datasets[0].data[i];
+      if (val == null) return;
+      ctx.save();
+      ctx.fillStyle = "#334155";
+      ctx.font = "700 12px Inter, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(val, bar.x + 6, bar.y);
+      ctx.restore();
+    });
+  }
+};
 
 function switchWeek(idx) {
   var run = DATA[idx];
@@ -218,12 +325,21 @@ function renderKPI(run) {
 }
 
 function renderActions(errors) {
+  // Items matching the active Priority facet. Owner buttons are derived from THIS set,
+  // so every owner shown has >=1 item under the current priority (never empty on click).
+  var priorityScoped = currentPriority === "all" ? errors :
+    errors.filter(function(e) { return (e.priority || "") === currentPriority; });
+
+  // Owner filter options: distinct, non-blank owners present in the priority-scoped set.
   var owners = [];
   var seen = {};
-  for (var i = 0; i < errors.length; i++) {
-    if (!seen[errors[i].owner]) { seen[errors[i].owner] = true; owners.push(errors[i].owner); }
+  for (var i = 0; i < priorityScoped.length; i++) {
+    var ow = priorityScoped[i].owner;
+    if (ow && !seen[ow]) { seen[ow] = true; owners.push(ow); }
   }
   owners.sort();
+  // If the selected owner no longer has items under this priority, fall back to All.
+  if (currentFilter !== "all" && owners.indexOf(currentFilter) < 0) currentFilter = "all";
 
   var fhtml = '<button class="' + (currentFilter === "all" ? "active" : "") +
     '" onclick="setFilter(&quot;all&quot;)">All</button>';
@@ -234,15 +350,19 @@ function renderActions(errors) {
   }
   document.getElementById("ownerFilters").innerHTML = fhtml;
 
-  var ownerFiltered = currentFilter === "all" ? errors : errors.filter(function(e) { return e.owner === currentFilter; });
+  // Priority quick-filter buttons + summary charts reflect the current owner selection.
+  var ownerScoped = currentFilter === "all" ? errors :
+    errors.filter(function(e) { return e.owner === currentFilter; });
+  renderPriorityFilters(ownerScoped);
+  renderPriorityChart(ownerScoped);
+  renderAgingChart(ownerScoped);
+  // By-Owner chart is a cross-owner overview -> always the full week, not faceted.
+  renderOwnerChart(errors);
 
-  // Priority quick-filter buttons + summary charts reflect the current owner view.
-  renderPriorityFilters(ownerFiltered);
-  renderPriorityChart(ownerFiltered);
-  renderAgingChart(ownerFiltered);
-
-  var filtered = currentPriority === "all" ? ownerFiltered :
-    ownerFiltered.filter(function(e) { return (e.priority || "") === currentPriority; });
+  // Table = both facets applied (priority AND owner).
+  var filtered = priorityScoped.filter(function(e) {
+    return currentFilter === "all" || e.owner === currentFilter;
+  });
   // Sort: Owner ascending, then Duration descending (longest-standing first).
   filtered = filtered.slice().sort(function(a, b) {
     var oa = a.owner || "", ob = b.owner || "";
@@ -384,35 +504,68 @@ function renderPriorityChart(items) {
     data: {
       labels: ["High", "Mid", "Low"],
       datasets: [{ data: [c.High, c.Mid, c.Low],
-        backgroundColor: ["#dc3545", "#fd7e14", "#28a745"], borderWidth: 1 }]
+        backgroundColor: ["#dc2626", "#d97706", "#16a34a"], borderWidth: 2, borderColor: "#fff" }]
     },
-    options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+    options: { responsive: true, cutout: "60%",
+      plugins: { legend: { position: "bottom",
+        labels: { usePointStyle: true, pointStyle: "circle", padding: 14, font: { size: 11 } } } } },
+    plugins: [doughnutLabels]
   });
 }
 
 function renderAgingChart(items) {
   var ctx = document.getElementById("chartAging");
   if (!ctx || typeof Chart === "undefined") return;
-  var b = [0, 0, 0, 0]; // 0(new), 1-2, 3-4, 5+
+  var b = [0, 0, 0]; // 1-2, 3-4, 5+ (the "0/new" bucket is intentionally excluded)
   for (var i = 0; i < items.length; i++) {
     var d = items[i].duration;
-    if (d == null) continue;
-    if (d === 0) b[0]++;
-    else if (d <= 2) b[1]++;
-    else if (d <= 4) b[2]++;
-    else b[3]++;
+    if (d == null || d === 0) continue;
+    if (d <= 2) b[0]++;
+    else if (d <= 4) b[1]++;
+    else b[2]++;
   }
   if (agingChart) agingChart.destroy();
   agingChart = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: ["0 (new)", "1-2", "3-4", "5+"],
+      labels: ["1-2 wk", "3-4 wk", "5+ wk"],
       datasets: [{ label: "Items", data: b,
-        backgroundColor: ["#9aa0a6", "#28a745", "#fd7e14", "#dc3545"], borderWidth: 1 }]
+        backgroundColor: ["#16a34a", "#d97706", "#dc2626"], borderRadius: 5, borderSkipped: false }]
     },
-    options: { responsive: true, plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 },
-        title: { display: true, text: "Items" } } } }
+    options: { responsive: true, layout: { padding: { top: 16 } },
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "#eef2f6" },
+        title: { display: true, text: "Items" } },
+        x: { grid: { display: false } } } },
+    plugins: [barTopLabels]
+  });
+}
+
+function renderOwnerChart(items) {
+  var ctx = document.getElementById("chartOwner");
+  if (!ctx || typeof Chart === "undefined") return;
+  var counts = {};
+  for (var i = 0; i < items.length; i++) {
+    var o = items[i].owner;
+    if (!o) continue; // skip unassigned/blank owners (not filterable)
+    counts[o] = (counts[o] || 0) + 1;
+  }
+  var entries = Object.keys(counts).map(function(k) { return [k, counts[k]]; });
+  entries.sort(function(a, b) { return b[1] - a[1]; });
+  var labels = entries.map(function(e) { return e[0]; });
+  var data = entries.map(function(e) { return e[1]; });
+  if (ownerChart) ownerChart.destroy();
+  ownerChart = new Chart(ctx, {
+    type: "bar",
+    data: { labels: labels, datasets: [{ label: "Items", data: data,
+      backgroundColor: "#2563eb", hoverBackgroundColor: "#1d4ed8", borderRadius: 5, barThickness: 16 }] },
+    options: { indexAxis: "y", responsive: true,
+      layout: { padding: { right: 24 } },
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "#eef2f6" } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } } },
+      onClick: function(e, els) { if (els.length) { setFilter(labels[els[0].index]); } } },
+    plugins: [hbarLabels]
   });
 }
 

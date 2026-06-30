@@ -120,10 +120,25 @@ def test_dashboard_template_wiring():
     assert "'<td style=\"text-align:center\">' + (e.duration" in t, "duration not centered"
     # Priority colored tag classes present
     assert ".tag-high" in t and ".tag-mid" in t and ".tag-low" in t, "priority tag css missing"
-    # Priority/Aging visualization (plan A) wired in
+    # Priority/Aging/Owner visualization wired in
     assert 'id="chartPriority"' in t and 'id="chartAging"' in t, "priority/aging canvases missing"
+    assert 'id="chartOwner"' in t, "by-owner canvas missing"
     assert "function renderPriorityChart" in t and "function renderAgingChart" in t, "chart fns missing"
+    assert "function renderOwnerChart" in t, "owner chart fn missing"
+    # By-owner chart uses the full week (not owner-filtered) so it stays a cross-owner overview
+    assert "renderOwnerChart(errors)" in t, "owner chart must use full errors, not ownerFiltered"
     assert 'id="priorityFilters"' in t and "function setPriority" in t, "priority filter missing"
+    # Aging "0 (new)" bucket removed per request
+    assert "0 (new)" not in t, "aging 0-bucket should be removed"
+    assert '"1-2 wk", "3-4 wk", "5+ wk"' in t, "aging labels should be 1-2/3-4/5+ only"
+    # Data labels drawn directly on all three charts
+    assert "doughnutLabels" in t and "barTopLabels" in t and "hbarLabels" in t, "chart value-label plugins missing"
+    # Owner filter is faceted by the active priority (no empty-on-click owners like GC DRP)
+    assert "priorityScoped" in t, "owner filter must be derived from the priority-scoped set"
+    assert "owners.indexOf(currentFilter) < 0" in t, "selected owner must reset when out of scope"
+    # UI polish: Inter font + semantic primary token
+    assert "family=Inter" in t, "Inter font not loaded"
+    assert "--primary:#2563eb" in t, "primary design token missing"
     print("PASS test_dashboard_template_wiring")
 
 
