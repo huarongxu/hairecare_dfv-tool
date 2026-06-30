@@ -54,9 +54,17 @@ def init_db():
             action TEXT,
             owner TEXT,
             is_hktw INTEGER,
+            first_time TEXT,
+            duration INTEGER,
             FOREIGN KEY (run_id) REFERENCES runs(id)
         );
     """)
+    # Migrations for existing DBs (CREATE TABLE IF NOT EXISTS won't add columns).
+    for col, decl in (("first_time", "TEXT"), ("duration", "INTEGER")):
+        try:
+            conn.execute(f"ALTER TABLE errors ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
     conn.close()
 
@@ -112,12 +120,15 @@ def save_run(summary, errors_df):
                 r.get("Action", ""),
                 r.get("Owner", ""),
                 1 if r.get("Is_HKTW", False) else 0,
+                r.get("First_Time", ""),
+                int(r.get("Duration", 0)) if str(r.get("Duration", "")) != "" else None,
             ))
         conn.executemany("""
             INSERT INTO errors (run_id, file_id, apo_product, description, category,
                                 brand, apo_location, snp_planner, error_message,
-                                idp_forecast, apo_forecast, reason, action, owner, is_hktw)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                idp_forecast, apo_forecast, reason, action, owner, is_hktw,
+                                first_time, duration)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, rows)
 
     conn.commit()
@@ -141,6 +152,26 @@ def get_errors_for_run(run_id):
                         (run_id,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_first_seen_map():
+    """Return the earliest run_date each code-by-plant (product+location) was
+    ever recorded as an error.
+
+    Returns {(apo_product, apo_location): first_run_date_str}. Keys are strings
+    so callers can match regardless of numeric/text types. Reflects history
+    BEFORE the current run is saved, so a brand-new item is absent (caller then
+    treats the current run as its first appearance).
+    """
+    init_db()
+    conn = _get_conn()
+    rows = conn.execute("""
+        SELECT e.apo_product AS p, e.apo_location AS l, MIN(r.run_date) AS first_date
+        FROM errors e JOIN runs r ON e.run_id = r.id
+        GROUP BY e.apo_product, e.apo_location
+    """).fetchall()
+    conn.close()
+    return {(str(row["p"]), str(row["l"])): row["first_date"] for row in rows}
 
 
 def delete_runs(run_ids):

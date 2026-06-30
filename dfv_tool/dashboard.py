@@ -218,6 +218,15 @@ function renderActions(errors) {
   document.getElementById("ownerFilters").innerHTML = fhtml;
 
   var filtered = currentFilter === "all" ? errors : errors.filter(function(e) { return e.owner === currentFilter; });
+  // Sort: Owner ascending, then Duration descending (longest-standing first).
+  filtered = filtered.slice().sort(function(a, b) {
+    var oa = a.owner || "", ob = b.owner || "";
+    if (oa < ob) return -1;
+    if (oa > ob) return 1;
+    var da = a.duration != null ? a.duration : -1;
+    var db = b.duration != null ? b.duration : -1;
+    return db - da;
+  });
   document.getElementById("actionCount").textContent = filtered.length;
 
   if (filtered.length === 0) {
@@ -229,6 +238,7 @@ function renderActions(errors) {
   var html = '<table class="action-table" id="actionTable"><thead><tr>' +
     '<th>Product</th><th>Description</th><th>Brand</th><th>Location</th><th>Error</th>' +
     '<th>Forecast</th><th>Reason</th><th>Action</th><th>Owner</th>' +
+    '<th>First Time</th><th>Duration</th>' +
     '</tr></thead><tbody>';
 
   for (var k = 0; k < filtered.length; k++) {
@@ -246,6 +256,8 @@ function renderActions(errors) {
       '<td>' + e.reason + '</td>' +
       '<td><strong>' + e.action + '</strong></td>' +
       '<td class="owner-cell"><span class="tag ' + ownerTag + '">' + e.owner + '</span></td>' +
+      '<td class="owner-cell">' + (e.first_time || "") + '</td>' +
+      '<td style="text-align:center">' + (e.duration != null ? e.duration : "") + '</td>' +
       '</tr>';
   }
   html += '</tbody></table>';

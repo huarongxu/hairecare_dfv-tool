@@ -13,7 +13,7 @@ import os
 import sys
 import time
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -181,6 +181,58 @@ def classify_issues(df):
     return errors
 
 
+def _iso_week_label(dt):
+    """Return an ISO week label like 'W22/2026' for a datetime."""
+    iso = dt.isocalendar()
+    return f"W{iso[1]:02d}/{iso[0]}"
+
+
+def _week_span(first_dt, now):
+    """Number of ISO weeks between two datetimes (Monday-anchored).
+
+    W22 -> W25 returns 3. Robust across year boundaries.
+    """
+    m1 = first_dt.date() - timedelta(days=first_dt.weekday())
+    m2 = now.date() - timedelta(days=now.weekday())
+    return max(0, (m2 - m1).days // 7)
+
+
+def _parse_run_date(s):
+    """Parse a stored run_date string ('YYYY-MM-DD HH:MM') into a datetime."""
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(str(s), fmt)
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
+def enrich_first_seen(errors):
+    """Add First_Time (week label of first appearance) and Duration (weeks since
+    first appearance) for each code-by-plant (APO_Product + APO_Location).
+
+    First appearance is looked up from history; an item not seen in any prior
+    run is treated as first appearing in the current run.
+    """
+    if errors.empty:
+        return errors
+
+    from history import get_first_seen_map
+    seen = get_first_seen_map()
+    now = datetime.now()
+
+    def info(row):
+        key = (str(row["APO_Product"]), str(row["APO_Location"]))
+        prior = _parse_run_date(seen.get(key)) if seen.get(key) else None
+        first_dt = prior if (prior is not None and prior < now) else now
+        return _iso_week_label(first_dt), _week_span(first_dt, now)
+
+    res = errors.apply(info, axis=1, result_type="expand")
+    errors["First_Time"] = res[0]
+    errors["Duration"] = res[1]
+    return errors
+
+
 def generate_summary(df, errors):
     """Generate summary statistics with two KPIs:
     1. 18 Months volume difference (target < 2%)
@@ -262,6 +314,10 @@ def export_results(errors, summary, output_dir):
     # Export actionable errors
     if not errors.empty:
         actionable = errors[~errors["Is_HKTW"]]
+        # Sort: Owner ascending, then Duration descending (longest-standing first).
+        if not actionable.empty and "Duration" in actionable.columns:
+            actionable = actionable.sort_values(
+                ["Owner", "Duration"], ascending=[True, False], kind="mergesort")
         if not actionable.empty:
             out_path = os.path.join(output_dir, f"DFV_actions_{date_str}.xlsx")
             with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
@@ -301,6 +357,8 @@ def export_results(errors, summary, output_dir):
                     "Reason": "Reason",
                     "Action": "Action",
                     "Owner": "Owner",
+                    "First_Time": "First Time",
+                    "Duration": "Duration",
                 }
                 detail = actionable[[c for c in detail_cols if c in actionable.columns]].copy()
                 detail.rename(columns=detail_cols, inplace=True)
@@ -314,7 +372,11 @@ def export_results(errors, summary, output_dir):
 
     # Export full error list as CSV
     csv_out = os.path.join(output_dir, f"DFV_errors_{date_str}.csv")
-    errors.to_csv(csv_out, index=False)
+    errors_out = errors
+    if "Duration" in errors.columns and "Owner" in errors.columns:
+        errors_out = errors.sort_values(
+            ["Owner", "Duration"], ascending=[True, False], kind="mergesort")
+    errors_out.to_csv(csv_out, index=False)
     print(f"Exported: {csv_out}")
 
 
@@ -323,18 +385,38 @@ def run_pipeline(csv_path=None):
     # If no CSV provided, use latest in output
     if csv_path is None:
         csvs = sorted(Path(OUTPUT_DIR).glob("DFV_2*.csv"), reverse=True)
-        if csvs:
-            csv_path = str(csvs[0])
-            print(f"Using latest CSV: {csv_path}")
-        else:
+        if not csvs:
             print("No CSV found in output/. Run SAP refresh first.")
             return
+
+        latest = csvs[0]
+        # Guard against the stale-data trap: when the AO refresh fails, run.py
+        # exits non-zero and refuses to export (step5 protection). If we then
+        # auto-pick the newest CSV here, it is LAST WEEK's export and we would
+        # silently reprocess OLD data, dating it today and polluting history.
+        # Only accept an auto-picked CSV that was exported TODAY.
+        today = datetime.now().strftime("%Y%m%d")
+        csv_date = latest.name.split("_")[1] if "_" in latest.name else ""
+        if csv_date != today:
+            print(
+                f"REFUSING to run: latest CSV {latest.name} is not from today "
+                f"({today}). The SAP refresh likely did not succeed, so there is "
+                f"no fresh data to process. Not regenerating the dashboard with "
+                f"stale data. Re-run the full AO workflow once the refresh works."
+            )
+            return
+
+        csv_path = str(latest)
+        print(f"Using latest CSV: {csv_path}")
 
     # Load
     df = load_data(csv_path)
 
     # Classify
     errors = classify_issues(df)
+
+    # Enrich with first-appearance week + duration (from history)
+    errors = enrich_first_seen(errors)
 
     # Summary
     summary = generate_summary(df, errors)
@@ -367,13 +449,21 @@ if __name__ == "__main__":
     if args.watch:
         csv_path = watch_for_ready()
         if csv_path:
-            run_pipeline(csv_path)
+            result = run_pipeline(csv_path)
+        else:
+            result = None
     elif args.csv:
-        run_pipeline(args.csv)
+        result = run_pipeline(args.csv)
     else:
         # Use baseline data for testing
         baseline = os.path.join(os.path.dirname(OUTPUT_DIR), "baseline_main_data.csv")
         if os.path.exists(baseline):
-            run_pipeline(baseline)
+            result = run_pipeline(baseline)
         else:
-            run_pipeline()
+            result = run_pipeline()
+
+    # Exit non-zero when nothing was processed (e.g. no CSV, or the latest CSV
+    # is stale) so callers (start_dfv.bat) report failure instead of opening a
+    # dashboard built from old data.
+    if result is None:
+        sys.exit(1)
