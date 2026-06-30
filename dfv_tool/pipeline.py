@@ -197,6 +197,21 @@ def _week_span(first_dt, now):
     return max(0, (m2 - m1).days // 7)
 
 
+def _priority(duration):
+    """Bucket Duration (weeks) into a priority label.
+
+    >4 -> High, 3-4 -> Mid, 0-2 -> Low. A brand-new item (0 weeks) is Low.
+    """
+    if duration is None or duration == "":
+        return ""
+    d = int(duration)
+    if d > 4:
+        return "High"
+    if d >= 3:
+        return "Mid"
+    return "Low"
+
+
 def _parse_run_date(s):
     """Parse a stored run_date string ('YYYY-MM-DD HH:MM') into a datetime."""
     for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
@@ -230,6 +245,7 @@ def enrich_first_seen(errors):
     res = errors.apply(info, axis=1, result_type="expand")
     errors["First_Time"] = res[0]
     errors["Duration"] = res[1]
+    errors["Priority"] = errors["Duration"].map(_priority)
     return errors
 
 
@@ -359,6 +375,7 @@ def export_results(errors, summary, output_dir):
                     "Owner": "Owner",
                     "First_Time": "First Time",
                     "Duration": "Duration",
+                    "Priority": "Priority",
                 }
                 detail = actionable[[c for c in detail_cols if c in actionable.columns]].copy()
                 detail.rename(columns=detail_cols, inplace=True)

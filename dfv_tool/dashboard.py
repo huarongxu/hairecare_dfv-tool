@@ -95,6 +95,9 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
 .tag-dp { background:#fff3cd; color:#856404; }
 .tag-drp { background:#cce5ff; color:#004085; }
 .tag-iol { background:#d4edda; color:#155724; }
+.tag-high { background:#f8d7da; color:#842029; }
+.tag-mid { background:#fff3cd; color:#856404; }
+.tag-low { background:#d4edda; color:#155724; }
 .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:19px; margin-top:26px; }
 .chart-card { background:#fff; border-radius:8px; padding:18px 19px; max-height:310px; }
 .chart-card h3 { font-size:0.92em; color:#555; margin-bottom:10px; }
@@ -238,7 +241,7 @@ function renderActions(errors) {
   var html = '<table class="action-table" id="actionTable"><thead><tr>' +
     '<th>Product</th><th>Description</th><th>Brand</th><th>Location</th><th>Error</th>' +
     '<th>Forecast</th><th>Reason</th><th>Action</th><th>Owner</th>' +
-    '<th>First Time</th><th>Duration</th>' +
+    '<th>First Time</th><th>Duration</th><th>Priority</th>' +
     '</tr></thead><tbody>';
 
   for (var k = 0; k < filtered.length; k++) {
@@ -258,6 +261,7 @@ function renderActions(errors) {
       '<td class="owner-cell"><span class="tag ' + ownerTag + '">' + e.owner + '</span></td>' +
       '<td class="owner-cell">' + (e.first_time || "") + '</td>' +
       '<td style="text-align:center">' + (e.duration != null ? e.duration : "") + '</td>' +
+      '<td style="text-align:center">' + (e.priority ? '<span class="tag ' + (e.priority === "High" ? "tag-high" : e.priority === "Mid" ? "tag-mid" : "tag-low") + '">' + e.priority + '</span>' : "") + '</td>' +
       '</tr>';
   }
   html += '</tbody></table>';

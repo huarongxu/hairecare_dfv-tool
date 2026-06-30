@@ -47,6 +47,20 @@ def test_week_helpers():
     print("PASS test_week_helpers")
 
 
+def test_priority_buckets():
+    # 0-2 Low (incl. brand-new 0), 3-4 Mid, >4 High; empty/None -> ""
+    assert pipeline._priority(0) == "Low"
+    assert pipeline._priority(1) == "Low"
+    assert pipeline._priority(2) == "Low"
+    assert pipeline._priority(3) == "Mid"
+    assert pipeline._priority(4) == "Mid"
+    assert pipeline._priority(5) == "High"
+    assert pipeline._priority(99) == "High"
+    assert pipeline._priority(None) == ""
+    assert pipeline._priority("") == ""
+    print("PASS test_priority_buckets")
+
+
 def test_enrich_first_seen():
     # Inject a fake history map (overrides the imported lookup at call time).
     original = history.get_first_seen_map
@@ -70,6 +84,10 @@ def test_enrich_first_seen():
         assert r1["Duration"] == 0, r1["Duration"]
         # Int product number must match the string key in history
         assert r2["First_Time"] == "W01/2026", r2["First_Time"]
+
+        # Priority is derived from Duration
+        assert r0["Priority"] in ("Mid", "High"), r0["Priority"]  # duration >=3
+        assert r1["Priority"] == "Low", r1["Priority"]            # brand new, duration 0
 
         # Empty input returns empty (no crash)
         assert pipeline.enrich_first_seen(pd.DataFrame()).empty
@@ -97,14 +115,17 @@ def test_sort_owner_then_duration_desc():
 def test_dashboard_template_wiring():
     t = dashboard._get_template()
     assert "filtered = filtered.slice().sort" in t, "dashboard sort missing"
-    assert "<th>First Time</th><th>Duration</th>" in t, "dashboard headers missing"
+    assert "<th>First Time</th><th>Duration</th><th>Priority</th>" in t, "dashboard headers missing"
     # Duration cell must be centered
     assert "'<td style=\"text-align:center\">' + (e.duration" in t, "duration not centered"
+    # Priority colored tag classes present
+    assert ".tag-high" in t and ".tag-mid" in t and ".tag-low" in t, "priority tag css missing"
     print("PASS test_dashboard_template_wiring")
 
 
 if __name__ == "__main__":
     test_week_helpers()
+    test_priority_buckets()
     test_enrich_first_seen()
     test_sort_owner_then_duration_desc()
     test_dashboard_template_wiring()

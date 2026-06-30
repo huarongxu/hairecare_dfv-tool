@@ -56,11 +56,12 @@ def init_db():
             is_hktw INTEGER,
             first_time TEXT,
             duration INTEGER,
+            priority TEXT,
             FOREIGN KEY (run_id) REFERENCES runs(id)
         );
     """)
     # Migrations for existing DBs (CREATE TABLE IF NOT EXISTS won't add columns).
-    for col, decl in (("first_time", "TEXT"), ("duration", "INTEGER")):
+    for col, decl in (("first_time", "TEXT"), ("duration", "INTEGER"), ("priority", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE errors ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
@@ -122,13 +123,14 @@ def save_run(summary, errors_df):
                 1 if r.get("Is_HKTW", False) else 0,
                 r.get("First_Time", ""),
                 int(r.get("Duration", 0)) if str(r.get("Duration", "")) != "" else None,
+                r.get("Priority", ""),
             ))
         conn.executemany("""
             INSERT INTO errors (run_id, file_id, apo_product, description, category,
                                 brand, apo_location, snp_planner, error_message,
                                 idp_forecast, apo_forecast, reason, action, owner, is_hktw,
-                                first_time, duration)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                first_time, duration, priority)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, rows)
 
     conn.commit()
