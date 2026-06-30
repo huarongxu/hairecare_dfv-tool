@@ -128,7 +128,6 @@ FIXED_OWNERS = {
 LOCATION_OWNERS = {
     "C819": "Wu Wen hao",
     "C937": "Wu Wen hao",
-    "D594": "Wu Wen hao",
     "D767": "Wu Wen hao",
     "E546": "Wu Wen hao",
     "E560": "Wu Wen hao",
@@ -154,4 +153,4 @@ IOL_PLUS_OWNER = "Lucy"  # Description contains "+"
 
 # Additional HKTW locations (not in scope, owner = blank)
 # 5740 is always HKTW; add more here
-HKTW_LOCATIONS = {"5740", "E230"}
+HKTW_LOCATIONS = {"5740", "E230", "D594"}

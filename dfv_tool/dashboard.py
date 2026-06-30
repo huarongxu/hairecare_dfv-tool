@@ -142,10 +142,22 @@ body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:#333; }
     </div>
   </div>
 
+  <div class="chart-row">
+    <div class="chart-card">
+      <h3>Action Priority <span style="color:#999;font-weight:400">(current view)</span></h3>
+      <canvas id="chartPriority"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Aging Distribution <span style="color:#999;font-weight:400">(weeks since first seen)</span></h3>
+      <canvas id="chartAging"></canvas>
+    </div>
+  </div>
+
   <div class="section-title">
     Action Items <span class="badge" id="actionCount">0</span>
     <button class="copy-btn" onclick="copyTable()">Copy Table</button>
   </div>
+  <div class="filters" id="priorityFilters"></div>
   <div class="filters" id="ownerFilters"></div>
   <div id="actionTableWrap"></div>
 </div>
@@ -162,6 +174,8 @@ for (var i = 0; i < DATA.length; i++) {
 }
 
 var currentFilter = "all";
+var currentPriority = "all";
+var priorityChart = null, agingChart = null;
 
 function switchWeek(idx) {
   var run = DATA[idx];
@@ -220,7 +234,15 @@ function renderActions(errors) {
   }
   document.getElementById("ownerFilters").innerHTML = fhtml;
 
-  var filtered = currentFilter === "all" ? errors : errors.filter(function(e) { return e.owner === currentFilter; });
+  var ownerFiltered = currentFilter === "all" ? errors : errors.filter(function(e) { return e.owner === currentFilter; });
+
+  // Priority quick-filter buttons + summary charts reflect the current owner view.
+  renderPriorityFilters(ownerFiltered);
+  renderPriorityChart(ownerFiltered);
+  renderAgingChart(ownerFiltered);
+
+  var filtered = currentPriority === "all" ? ownerFiltered :
+    ownerFiltered.filter(function(e) { return (e.priority || "") === currentPriority; });
   // Sort: Owner ascending, then Duration descending (longest-standing first).
   filtered = filtered.slice().sort(function(a, b) {
     var oa = a.owner || "", ob = b.owner || "";
@@ -323,6 +345,75 @@ function setFilter(f) {
   currentFilter = f;
   var idx = document.getElementById("weekPicker").value;
   renderActions(DATA[idx].errors || []);
+}
+
+function setPriority(p) {
+  currentPriority = p;
+  var idx = document.getElementById("weekPicker").value;
+  renderActions(DATA[idx].errors || []);
+}
+
+function priorityCounts(items) {
+  var c = { High: 0, Mid: 0, Low: 0 };
+  for (var i = 0; i < items.length; i++) {
+    if (c[items[i].priority] != null) c[items[i].priority]++;
+  }
+  return c;
+}
+
+function renderPriorityFilters(items) {
+  var c = priorityCounts(items);
+  var defs = [["all", "All", items.length], ["High", "High", c.High],
+              ["Mid", "Mid", c.Mid], ["Low", "Low", c.Low]];
+  var html = "";
+  for (var i = 0; i < defs.length; i++) {
+    html += '<button class="' + (currentPriority === defs[i][0] ? "active" : "") +
+      '" onclick="setPriority(&quot;' + defs[i][0] + '&quot;)">' +
+      defs[i][1] + ' (' + defs[i][2] + ')</button>';
+  }
+  document.getElementById("priorityFilters").innerHTML = html;
+}
+
+function renderPriorityChart(items) {
+  var ctx = document.getElementById("chartPriority");
+  if (!ctx || typeof Chart === "undefined") return;
+  var c = priorityCounts(items);
+  if (priorityChart) priorityChart.destroy();
+  priorityChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["High", "Mid", "Low"],
+      datasets: [{ data: [c.High, c.Mid, c.Low],
+        backgroundColor: ["#dc3545", "#fd7e14", "#28a745"], borderWidth: 1 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+  });
+}
+
+function renderAgingChart(items) {
+  var ctx = document.getElementById("chartAging");
+  if (!ctx || typeof Chart === "undefined") return;
+  var b = [0, 0, 0, 0]; // 0(new), 1-2, 3-4, 5+
+  for (var i = 0; i < items.length; i++) {
+    var d = items[i].duration;
+    if (d == null) continue;
+    if (d === 0) b[0]++;
+    else if (d <= 2) b[1]++;
+    else if (d <= 4) b[2]++;
+    else b[3]++;
+  }
+  if (agingChart) agingChart.destroy();
+  agingChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["0 (new)", "1-2", "3-4", "5+"],
+      datasets: [{ label: "Items", data: b,
+        backgroundColor: ["#9aa0a6", "#28a745", "#fd7e14", "#dc3545"], borderWidth: 1 }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 },
+        title: { display: true, text: "Items" } } } }
+  });
 }
 
 function renderCharts() {

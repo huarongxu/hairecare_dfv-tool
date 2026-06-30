@@ -120,6 +120,10 @@ def test_dashboard_template_wiring():
     assert "'<td style=\"text-align:center\">' + (e.duration" in t, "duration not centered"
     # Priority colored tag classes present
     assert ".tag-high" in t and ".tag-mid" in t and ".tag-low" in t, "priority tag css missing"
+    # Priority/Aging visualization (plan A) wired in
+    assert 'id="chartPriority"' in t and 'id="chartAging"' in t, "priority/aging canvases missing"
+    assert "function renderPriorityChart" in t and "function renderAgingChart" in t, "chart fns missing"
+    assert 'id="priorityFilters"' in t and "function setPriority" in t, "priority filter missing"
     print("PASS test_dashboard_template_wiring")
 
 
